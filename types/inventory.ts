@@ -1,0 +1,12 @@
+export type Product = {
+  id: string;
+  created_at: string;
+  name: string;
+  barcode: string | null;
+  price: number;
+  cost: number;
+  stock: number;
+  image_url: string | null;
+  kiosk_id: string | null;
+  min_stock?: number;
+};
