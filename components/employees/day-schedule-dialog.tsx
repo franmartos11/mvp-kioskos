@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation"
 
 interface Employee {
   id: string
+  ui_key?: string
   first_name: string
   last_name: string
   kiosk_id: string
@@ -45,7 +46,9 @@ export function DayScheduleDialog({ open, onOpenChange, date, employees, current
             setStatus(currentShift.status || "scheduled")
         } else {
             // Default new
-            setEmployeeId(employees[0]?.id || "")
+             // Prioritize employees with valid IDs
+            const firstValid = employees.find(e => e.id)
+            setEmployeeId(firstValid?.id || "")
             setStartTime("09:00")
             setHours("8")
             setStatus("scheduled")
@@ -142,7 +145,9 @@ export function DayScheduleDialog({ open, onOpenChange, date, employees, current
                     </SelectTrigger>
                     <SelectContent>
                         {employees.map(e => (
-                            <SelectItem key={e.id} value={e.id}>{e.first_name} {e.last_name}</SelectItem>
+                             <SelectItem key={e.ui_key || e.id} value={e.id || "missing-id"} disabled={!e.id}>
+                                {e.first_name} {e.last_name} {!e.id && "(Sin legajo)"}
+                            </SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
