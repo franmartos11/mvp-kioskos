@@ -41,35 +41,16 @@ export function RegisterForm() {
 
       const userId = authData.user.id
 
-      // 2. Create Kiosk
+      // 2. Create Kiosk (via RPC to bypass RLS/Session issues)
       const { data: kioskData, error: kioskError } = await supabase
-        .from('kiosks')
-        .insert({
-          name: kioskName,
-          owner_id: userId
+        .rpc('create_initial_kiosk', {
+          p_kiosk_name: kioskName,
+          p_owner_id: userId
         })
-        .select()
-        .single()
 
       if (kioskError) {
         console.error("Kiosk Error:", kioskError)
         toast.error("Usuario creado, pero hubo error al crear el Kiosco. " + kioskError.message)
-        setLoading(false)
-        return
-      }
-
-      // 3. Add Member (Owner)
-      const { error: memberError } = await supabase
-        .from('kiosk_members')
-        .insert({
-          user_id: userId,
-          kiosk_id: kioskData.id,
-          role: 'owner'
-        })
-
-      if (memberError) {
-        console.error("Member Error:", memberError)
-        toast.error("Error al asignar rol de administrador.")
         setLoading(false)
         return
       }
