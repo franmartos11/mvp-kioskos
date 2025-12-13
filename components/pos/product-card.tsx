@@ -1,5 +1,4 @@
 import { Product } from "@/types/inventory"
-import { Button } from "@/components/ui/button"
 import { Plus, Image as ImageIcon } from "lucide-react"
 
 interface ProductCardProps {

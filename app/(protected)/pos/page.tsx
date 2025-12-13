@@ -100,7 +100,7 @@ export default function PosPage() {
                      />
                  )}
              </div>
-             <div className="flex-1 overflow-hidden p-4">
+             <div className="flex-1 overflow-hidden p-2">
                 <PosContainer initialProducts={products} />
              </div>
          </div>
