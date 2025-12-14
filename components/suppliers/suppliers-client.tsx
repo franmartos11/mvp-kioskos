@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { AddSupplierDialog } from "./add-supplier-dialog"
+import { SupplierDetailsDialog } from "./supplier-details-dialog"
 import { SupplierOrdersList } from "./supplier-orders-list"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
@@ -42,6 +43,7 @@ export function SuppliersClient() {
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
     const [isAddOpen, setIsAddOpen] = useState(false)
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false)
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null)
 
     const fetchSuppliers = async () => {
@@ -174,6 +176,9 @@ export function SuppliersClient() {
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end">
                                                                 <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                                                <DropdownMenuItem onClick={() => { setSelectedSupplier(supplier); setIsDetailsOpen(true); }}>
+                                                                    <Truck className="mr-2 h-4 w-4" /> Ver Detalle
+                                                                </DropdownMenuItem>
                                                                 <DropdownMenuItem onClick={() => { setSelectedSupplier(supplier); setIsAddOpen(true); }}>
                                                                     <Pencil className="mr-2 h-4 w-4" /> Editar
                                                                 </DropdownMenuItem>
@@ -210,6 +215,12 @@ export function SuppliersClient() {
                 onOpenChange={setIsAddOpen} 
                 onSuccess={fetchSuppliers}
                 supplierToEdit={selectedSupplier}
+            />
+            
+            <SupplierDetailsDialog
+                open={isDetailsOpen}
+                onOpenChange={setIsDetailsOpen}
+                supplier={selectedSupplier}
             />
         </div>
     )
