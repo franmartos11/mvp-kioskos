@@ -109,6 +109,10 @@ function useAuth() {
     return { isAuthenticated, isLoading }
 }
 
+import { KioskSwitcher } from "./kiosk-switcher"
+
+// ... imports
+
 export function Sidebar() {
   const { isAuthenticated, isLoading } = useAuth()
 
@@ -116,14 +120,19 @@ export function Sidebar() {
   if (isLoading || !isAuthenticated) return null
 
   return (
-    <aside className="hidden w-64 border-r bg-card md:block h-screen sticky top-0">
-      <div className="flex h-14 items-center border-b px-6">
+    <aside className="hidden w-64 border-r bg-card md:block h-screen sticky top-0 flex flex-col">
+      <div className="flex h-14 items-center border-b px-6 shrink-0">
         <Link href="/pos" className="flex items-center gap-2 font-semibold text-lg">
           <ShoppingCart className="h-6 w-6 text-primary" />
           <span>KioskApp</span>
         </Link>
       </div>
-      <MainNav />
+      <div className="p-4 border-b">
+          <KioskSwitcher />
+      </div>
+      <div className="flex-1 overflow-y-auto">
+          <MainNav />
+      </div>
     </aside>
   )
 }

@@ -37,6 +37,9 @@ import {
 import { Input } from "@/components/ui/input"
 import { supabase } from "@/utils/supabase/client"
 import { useRouter } from "next/navigation"
+import { useKiosk } from "@/components/providers/kiosk-provider"
+
+// ... existing code
 
 const productSchema = z.object({
   name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
@@ -52,6 +55,7 @@ const productSchema = z.object({
 type ProductFormValues = z.infer<typeof productSchema>
 
 export function CreateProductDialog() {
+  const { currentKiosk } = useKiosk()
   const [open, setOpen] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -84,6 +88,11 @@ export function CreateProductDialog() {
   }, [open])
 
   async function onSubmit(values: z.infer<typeof productSchema>) {
+    if (!currentKiosk) {
+        toast.error("Debes seleccionar un kiosco para crear productos")
+        return
+    }
+
     try {
       const { error } = await supabase
         .from("products")
@@ -96,9 +105,9 @@ export function CreateProductDialog() {
           min_stock: values.min_stock,
           image_url: values.image_url || null,
           supplier_id: (values.supplier_id === "none" || !values.supplier_id) ? null : values.supplier_id,
-          kiosk_id: null,
+          kiosk_id: currentKiosk.id,
         })
-
+      
       if (error) throw error
 
       toast.success("Producto creado correctamente")
@@ -106,6 +115,7 @@ export function CreateProductDialog() {
       form.reset()
       setPreview(null)
       router.refresh()
+      // Optional: Explicitly refresh inventory list if passed as prop, or reliance on router.refresh
     } catch (error) {
       console.error(error)
       toast.error("Error al crear el producto")

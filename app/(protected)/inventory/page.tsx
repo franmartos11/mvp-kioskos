@@ -37,9 +37,12 @@ import { ProductDetailsDialog } from "@/components/inventory/product-details-dia
 import { StockAdjustmentDialog } from "@/components/inventory/stock-adjustment-dialog";
 import { StockHistoryDialog } from "@/components/inventory/stock-history-dialog";
 import { AuditHistoryDialog } from "@/components/inventory/audit-history-dialog";
+import { useKiosk } from "@/components/providers/kiosk-provider";
 
+// ... existing imports
 
 export default function InventoryPage() {
+  const { currentKiosk } = useKiosk();
   const [productList, setProductList] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -112,19 +115,27 @@ export default function InventoryPage() {
     }
   };
 
-
   useEffect(() => {
-    fetchProducts(page);
-  }, [page]);
+    if (currentKiosk) {
+        fetchProducts(page);
+    } else {
+        setProductList([]);
+        setCount(0);
+        setLoading(false);
+    }
+  }, [page, currentKiosk]);
 
   async function fetchProducts(pageIndex: number) {
+    if (!currentKiosk) return;
+    
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
          // Get total count
-         const { count: total, error: countError } = await supabase
+         const { count: total } = await supabase
             .from('products')
             .select('*', { count: 'exact', head: true })
+            .eq('kiosk_id', currentKiosk.id)
          
          if (total !== null) setCount(total);
 
@@ -135,6 +146,7 @@ export default function InventoryPage() {
          const { data: products } = await supabase
             .from('products')
             .select('*')
+            .eq('kiosk_id', currentKiosk.id)
             .order('created_at', { ascending: false })
             .range(from, to);
          

@@ -9,50 +9,63 @@ import { PosContainer } from "@/components/pos/pos-container"
 import { supabase } from "@/utils/supabase/client"
 import { Product } from "@/types/inventory"
 import { OpenShiftDialog, CloseShiftDialog } from "@/components/pos/cash-register-dialog"
+import { useKiosk } from "@/components/providers/kiosk-provider"
 
 export default function PosPage() {
+  const { currentKiosk } = useKiosk()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   
   const [session, setSession] = useState<any>(null)
   const [loadingSession, setLoadingSession] = useState(true)
-  const [kioskId, setKioskId] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [currentKiosk])
 
   async function loadData() {
+    if (!currentKiosk) return
+
     setLoadingSession(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     setUserId(user.id)
     
-    // Get Kiosk ID
-    const { data: member } = await supabase.from('kiosk_members').select('kiosk_id').eq('user_id', user.id).maybeSingle()
-    if (member) {
-        setKioskId(member.kiosk_id)
+    // Check for open session using currentKiosk.id
+    const { data: openSession } = await supabase
+        .from('cash_sessions')
+        .select('*')
+        .eq('kiosk_id', currentKiosk.id)
+        .eq('status', 'open')
+        .maybeSingle()
         
-        // Check for open session
-        const { data: openSession } = await supabase
-            .from('cash_sessions')
-            .select('*')
-            .eq('kiosk_id', member.kiosk_id)
-            .eq('status', 'open')
-            .maybeSingle()
-            
-        setSession(openSession)
-    }
+    setSession(openSession)
 
-    // Load products
-    const { data, error } = await supabase.from('products').select('*').order('name').limit(50)
+    // Load products for this kiosk
+    const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('kiosk_id', currentKiosk.id) // Filter by Kiosk!
+        .order('name')
+        .limit(50)
+
     if (data) {
         setProducts(data as Product[])
     }
     
     setLoading(false)
     setLoadingSession(false)
+  }
+
+  if (!currentKiosk) {
+      return (
+        <div className="flex h-full items-center justify-center text-muted-foreground gap-2">
+            <div className="p-4 bg-yellow-500/10 text-yellow-500 rounded-md">
+                Por favor selecciona un kiosco para continuar.
+            </div>
+        </div>
+      )
   }
 
   return (
@@ -67,17 +80,12 @@ export default function PosPage() {
                  <p className="text-muted-foreground">
                     Para comenzar a realizar ventas, es necesario realizar la apertura de caja indicando el saldo inicial.
                  </p>
-                 {kioskId && userId && (
+                 {userId && (
                     <OpenShiftDialog 
-                        kioskId={kioskId} 
+                        kioskId={currentKiosk.id} 
                         userId={userId} 
                         onSuccess={loadData} 
                     />
-                 )}
-                 {!kioskId && (
-                    <div className="p-4 bg-destructive/10 text-destructive rounded-md">
-                        No tienes un kiosco asignado. Contacta al administrador.
-                    </div>
                  )}
               </div>
           </div>
@@ -96,15 +104,13 @@ export default function PosPage() {
                         </p>
                     </div>
                  </div>
-                 {kioskId && (
-                     <CloseShiftDialog 
-                        sessionId={session.id}
-                        kioskId={kioskId}
-                        initialCash={session.initial_cash}
-                        openedAt={session.opened_at}
-                        onSuccess={loadData}
-                     />
-                 )}
+                 <CloseShiftDialog 
+                    sessionId={session.id}
+                    kioskId={currentKiosk.id}
+                    initialCash={session.initial_cash}
+                    openedAt={session.opened_at}
+                    onSuccess={loadData}
+                 />
              </div>
              <div className="flex-1 overflow-hidden p-2">
                 <PosContainer initialProducts={products} />
