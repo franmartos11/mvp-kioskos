@@ -94,6 +94,7 @@ export function KioskManager() {
           role
         `)
         .eq('user_id', user.id)
+        .eq('role', 'owner')
 
       if (error) throw error
 

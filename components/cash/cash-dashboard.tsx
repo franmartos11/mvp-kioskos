@@ -31,10 +31,11 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 import { OpenShiftDialog, CloseShiftDialog } from "@/components/pos/cash-register-dialog"
+import { useKiosk } from "@/components/providers/kiosk-provider"
 
 export function CashDashboard() {
+    const { currentKiosk } = useKiosk()
     const [loading, setLoading] = useState(true)
-    const [kioskId, setKioskId] = useState<string | null>(null)
     const [userId, setUserId] = useState<string | null>(null)
     const [session, setSession] = useState<any>(null)
     
@@ -62,20 +63,19 @@ export function CashDashboard() {
     const [submitting, setSubmitting] = useState(false)
 
     useEffect(() => {
-        loadData()
-    }, [])
+        if (currentKiosk) {
+            loadData()
+        }
+    }, [currentKiosk])
 
     async function loadData() {
+        if (!currentKiosk) return
         setLoading(true)
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
         setUserId(user.id)
 
-        const { data: member } = await supabase.from('kiosk_members').select('kiosk_id').eq('user_id', user.id).maybeSingle()
-        if (member) {
-            setKioskId(member.kiosk_id)
-            await fetchSessionAndStats(member.kiosk_id)
-        }
+        await fetchSessionAndStats(currentKiosk.id)
         setLoading(false)
     }
 
@@ -169,12 +169,12 @@ export function CashDashboard() {
             if (error) throw error
 
             // 2. If it's an Expense (Out + Checked), insert into expenses table
-            if (movementType === 'out' && isExpense && kioskId && userId) {
+            if (movementType === 'out' && isExpense && currentKiosk && userId) {
                  const { error: expError } = await supabase.from('expenses').insert({
                     description: reason, // Use same reason
                     amount: parseFloat(amount),
                     category: expenseCategory,
-                    kiosk_id: kioskId,
+                    kiosk_id: currentKiosk.id,
                     user_id: userId,
                     date: new Date().toISOString()
                  })
@@ -191,7 +191,9 @@ export function CashDashboard() {
             setAmount("")
             setReason("")
             setIsExpense(false) // Reset
-            if (kioskId) fetchSessionAndStats(kioskId)
+            setReason("")
+            setIsExpense(false) // Reset
+            if (currentKiosk) fetchSessionAndStats(currentKiosk.id)
 
         } catch (error) {
             console.error(error)
@@ -221,15 +223,15 @@ export function CashDashboard() {
                              </Button>
                              <CloseShiftDialog 
                                 sessionId={session.id} 
-                                kioskId={kioskId!} 
+                                kioskId={currentKiosk!.id} 
                                 initialCash={session.initial_cash} 
                                 openedAt={session.opened_at}
-                                onSuccess={() => kioskId && fetchSessionAndStats(kioskId)}
+                                onSuccess={() => currentKiosk && fetchSessionAndStats(currentKiosk.id)}
                             />
                          </div>
                      ) : (
-                        kioskId && userId && (
-                            <OpenShiftDialog kioskId={kioskId} userId={userId} onSuccess={() => kioskId && fetchSessionAndStats(kioskId)} />
+                        currentKiosk && userId && (
+                            <OpenShiftDialog kioskId={currentKiosk.id} userId={userId} onSuccess={() => currentKiosk && fetchSessionAndStats(currentKiosk.id)} />
                         )
                      )}
                 </div>

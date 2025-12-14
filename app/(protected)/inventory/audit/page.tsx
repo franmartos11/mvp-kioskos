@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { ClipboardList, Play, CheckCircle, ArrowRight, ArrowLeft, RefreshCw } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useKiosk } from "@/components/providers/kiosk-provider"
 
 // Audit Types
 type Audit = {
@@ -29,6 +30,7 @@ type Product = {
 
 export default function AuditPage() {
   const router = useRouter()
+  const { currentKiosk } = useKiosk()
   const [activeAudit, setActiveAudit] = useState<Audit | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -44,8 +46,10 @@ export default function AuditPage() {
   const supabase = createClient()
 
   useEffect(() => {
-    fetchActiveAudit()
-  }, [])
+    if (currentKiosk) {
+        fetchActiveAudit()
+    }
+  }, [currentKiosk])
 
   // Focus input when product changes
   useEffect(() => {
@@ -61,17 +65,21 @@ export default function AuditPage() {
   }, [currentIndex, currentProduct, auditItems])
 
   async function fetchActiveAudit() {
+    if (!currentKiosk) return
     setIsLoading(true)
     try {
         const { data: audits } = await supabase
             .from('stock_audits')
             .select('*')
+            .eq('kiosk_id', currentKiosk.id)
             .eq('status', 'in_progress')
             .limit(1)
 
         if (audits && audits.length > 0) {
             setActiveAudit(audits[0])
             await fetchProducts(audits[0].kiosk_id)
+        } else {
+            setActiveAudit(null) // Reset if no audit for this kiosk
         }
     } catch (error) {
         console.error("Error fetching audit", error)
@@ -84,34 +92,22 @@ export default function AuditPage() {
       const { data } = await supabase
         .from('products')
         .select('id, name, barcode')
-        // .eq('kiosk_id', kioskId) // Removed to rely on RLS and avoid filtering issues if kiosk_id is not exactly matching or if we want all visible products.
+        .eq('kiosk_id', kioskId)
       
       if (data) setProducts(data)
   }
 
   async function startAudit() {
+    if (!currentKiosk) return
     setIsLoading(true)
     try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error("No user")
 
-        const { data: memberships } = await supabase
-            .from('kiosk_members')
-            .select('kiosk_id')
-            .eq('user_id', user.id)
-            .limit(1)
-        
-        if (!memberships || memberships.length === 0) {
-            toast.error("No tienes un kiosco asignado")
-            return
-        }
-
-        const kioskId = memberships[0].kiosk_id
-
         const { data: newAudit, error } = await supabase
             .from('stock_audits')
             .insert({
-                kiosk_id: kioskId,
+                kiosk_id: currentKiosk.id,
                 performed_by: user.id,
                 status: 'in_progress'
             })
@@ -121,7 +117,7 @@ export default function AuditPage() {
         if (error) throw error
 
         setActiveAudit(newAudit)
-        await fetchProducts(kioskId)
+        await fetchProducts(currentKiosk.id)
         toast.success("Auditoría iniciada")
 
     } catch (error) {
