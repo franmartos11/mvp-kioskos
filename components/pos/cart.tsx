@@ -1,6 +1,6 @@
 import { CartItem } from "@/types/pos"
 import { Button } from "@/components/ui/button"
-import { Minus, Plus, Trash2 } from "lucide-react"
+import { Minus, Plus, Trash2, ShoppingCart } from "lucide-react"
 
 interface CartProps {
   items: CartItem[]
@@ -13,65 +13,80 @@ export function Cart({ items, onUpdateQuantity, onRemove }: CartProps) {
 
   if (items.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8">
-        <p>El carrito está vacío</p>
-        <p className="text-sm">Agrega productos para comenzar</p>
+      <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8 gap-3">
+        <div className="bg-muted p-4 rounded-full">
+            <ShoppingCart className="h-8 w-8 opacity-50" />
+        </div>
+        <div className="text-center">
+            <p className="font-medium">El carrito está vacío</p>
+            <p className="text-sm opacity-75">Selecciona productos para comenzar</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex-1 overflow-auto p-4 space-y-4">
-      {items.map((item) => (
-        <div key={item.product.id} className="flex items-center gap-4 bg-muted/50 p-3 rounded-lg">
-           <div className="flex-1 min-w-0">
-             <p className="font-medium text-sm truncate">{item.product.name}</p>
-             <p className="text-xs text-muted-foreground">${item.product.price} c/u</p>
-           </div>
-           
-           <div className="flex items-center gap-2">
-             <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-7 w-7"
-                onClick={() => onUpdateQuantity(item.product.id, -1)}
-             >
-                <Minus className="h-3 w-3" />
-             </Button>
-             <span className="w-8 text-center text-sm tabular-nums">{item.quantity}</span>
-             <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-7 w-7"
-                onClick={() => onUpdateQuantity(item.product.id, 1)}
-             >
-                <Plus className="h-3 w-3" />
-             </Button>
-           </div>
+    <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
+            {items.map((item) => (
+                <div key={item.product.id} className="flex flex-col gap-2 py-3 border-b border-border/50 last:border-0 hover:bg-muted/30 -mx-2 px-2 rounded-xl transition-colors">
+                <div className="flex justify-between items-start gap-2">
+                    <p className="font-semibold text-base leading-tight">
+                        {item.product.name}
+                    </p>
+                    <p className="font-bold text-base min-w-[70px] text-right">
+                        ${(item.product.price * item.quantity).toFixed(2)}
+                    </p>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                        ${item.product.price} c/u
+                    </p>
+                    
+                    <div className="flex items-center gap-3">
+                         <div className="flex items-center border rounded-md bg-background shadow-sm">
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 rounded-none hover:bg-muted"
+                                onClick={() => onUpdateQuantity(item.product.id, -1)}
+                            >
+                                <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="w-10 text-center text-sm font-medium tabular-nums border-x h-8 flex items-center justify-center bg-muted/20">
+                                {item.quantity}
+                            </span>
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 rounded-none hover:bg-muted"
+                                onClick={() => onUpdateQuantity(item.product.id, 1)}
+                            >
+                                <Plus className="h-3 w-3" />
+                            </Button>
+                        </div>
 
-           <div className="text-right min-w-[60px]">
-             <p className="font-bold text-sm">
-                ${(item.product.price * item.quantity).toFixed(2)}
-             </p>
-           </div>
-
-           <Button 
-             variant="ghost" 
-             size="icon" 
-             className="h-7 w-7 text-muted-foreground hover:text-destructive"
-             onClick={() => onRemove(item.product.id)}
-           >
-             <Trash2 className="h-4 w-4" />
-           </Button>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => onRemove(item.product.id)}
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+                </div>
+            ))}
         </div>
-      ))}
       
-      <div className="pt-4 border-t mt-auto">
-        <div className="flex justify-between items-center text-lg font-bold">
-            <span>Total</span>
-            <span>${total.toFixed(2)}</span>
+        <div className="p-4 bg-muted/20 border-t mt-auto shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            <div className="flex justify-between items-end">
+                <span className="text-muted-foreground font-medium">Total a Pagar</span>
+                <span className="text-3xl font-black tracking-tight">${total.toFixed(2)}</span>
+            </div>
         </div>
-      </div>
     </div>
   )
 }

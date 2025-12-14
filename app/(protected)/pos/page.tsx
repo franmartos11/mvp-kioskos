@@ -83,12 +83,18 @@ export default function PosPage() {
           </div>
        ) : (
          <div className="flex flex-col h-[calc(100vh-4rem)]">
-             <div className="h-14 border-b flex items-center justify-between px-4 bg-background shrink-0">
-                 <div className="flex items-center gap-2">
-                    <span className="font-semibold">Caja Abierta</span>
-                    <span className="text-muted-foreground text-sm">
-                        {format(new Date(session.opened_at), 'HH:mm')}
-                    </span>
+             <div className="m-2 mb-0 border rounded-xl flex items-center justify-between px-6 py-3 bg-background shrink-0 shadow-sm z-10">
+                 <div className="flex items-center gap-3">
+                    <div className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                    </div>
+                    <div>
+                        <h1 className="font-bold text-lg leading-none">Caja Abierta</h1>
+                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                            Abierto a las <span className="font-medium text-foreground">{format(new Date(session.opened_at), 'HH:mm')}</span>
+                        </p>
+                    </div>
                  </div>
                  {kioskId && (
                      <CloseShiftDialog 

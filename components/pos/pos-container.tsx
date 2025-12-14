@@ -214,7 +214,7 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
   return (
     <div className="flex flex-col lg:flex-row h-full gap-4 pb-20 md:pb-0">
       {/* Left: Catalog */}
-      <div className="flex-1 flex flex-col gap-4 bg-background border rounded-lg p-4 shadow-sm min-h-0">
+      <div className="flex-1 flex flex-col gap-4 bg-background border rounded-xl p-4 shadow-sm min-h-0">
         <div className="flex gap-2">
             <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -247,15 +247,23 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
             </Button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto content-start flex-1 min-h-[300px]">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto content-start flex-1 min-h-[300px] p-2">
             {isSearching && (
                  <div className="col-span-full h-10 flex items-center justify-center text-muted-foreground animate-pulse">
                      Buscando...
                  </div>
             )}
-            {!isSearching && displayedProducts.map(product => (
-                <ProductCard key={product.id} product={product} onAdd={addToCart} />
-            ))}
+            {!isSearching && displayedProducts.map(product => {
+                const inCart = cart.find(item => item.product.id === product.id)
+                return (
+                    <ProductCard 
+                        key={product.id} 
+                        product={product} 
+                        onAdd={addToCart} 
+                        quantity={inCart?.quantity || 0}
+                    />
+                )
+            })}
             {!isSearching && displayedProducts.length === 0 && (
                 <div className="col-span-full h-40 flex items-center justify-center text-muted-foreground">
                     No se encontraron productos
@@ -265,7 +273,7 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
       </div>
 
       {/* Right: Cart */}
-      <div className="w-full lg:w-[350px] flex flex-col bg-background border rounded-lg shadow-sm h-[300px] lg:h-full">
+      <div className="w-full lg:w-[350px] flex flex-col bg-background border rounded-xl shadow-sm h-[300px] lg:h-full">
         <div className="p-4 border-b">
             <h2 className="font-semibold text-lg flex items-center gap-2">
                 Carrito

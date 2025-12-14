@@ -4,15 +4,23 @@ import { Plus, Image as ImageIcon } from "lucide-react"
 interface ProductCardProps {
   product: Product
   onAdd: (product: Product) => void
+  quantity?: number
 }
 
-export function ProductCard({ product, onAdd }: ProductCardProps) {
+export function ProductCard({ product, onAdd, quantity = 0 }: ProductCardProps) {
   return (
     <div 
-      className="flex flex-col border rounded-lg overflow-hidden bg-card hover:bg-accent/50 transition-colors cursor-pointer group"
+      className={`flex flex-col border rounded-xl overflow-hidden bg-card hover:bg-accent/50 transition-all cursor-pointer group relative h-full min-h-[240px] ${
+        quantity > 0 ? 'border-primary ring-1 ring-primary bg-primary/5' : ''
+      }`}
       onClick={() => onAdd(product)}
     >
-      <div className="relative aspect-square bg-muted">
+      {quantity > 0 && (
+          <div className="absolute top-2 right-2 z-10 bg-primary text-primary-foreground font-bold rounded-full w-7 h-7 flex items-center justify-center text-xs shadow-md animate-in zoom-in">
+              {quantity}
+          </div>
+      )}
+      <div className="relative h-32 w-full bg-muted shrink-0">
         {product.image_url ? (
             /* eslint-disable-next-line @next/next/no-img-element */
           <img 
@@ -29,11 +37,10 @@ export function ProductCard({ product, onAdd }: ProductCardProps) {
              <Plus className="text-white h-8 w-8 drop-shadow-md" />
         </div>
       </div>
-      <div className="p-3">
-        <h3 className="font-medium text-sm line-clamp-2 min-h-[2.5rem]">{product.name}</h3>
-        <div className="mt-1 flex items-center justify-between">
-            <span className="font-bold">${product.price}</span>
-            <span className="text-xs text-muted-foreground">Stock: {product.stock}</span>
+      <div className="p-3 flex flex-col justify-between flex-1 gap-2 bg-secondary/30 border-t min-h-[85px]">
+        <h3 className="font-semibold text-base leading-tight line-clamp-2" title={product.name}>{product.name}</h3>
+        <div className="mt-auto">
+            <span className="font-bold text-2xl text-primary block text-right w-full" title={`$${product.price}`}>${product.price ?? 0}</span>
         </div>
       </div>
     </div>
