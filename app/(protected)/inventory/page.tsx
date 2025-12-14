@@ -29,11 +29,14 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, BoxSelect, Users, History } from "lucide-react";
+import { ChevronDown, BoxSelect, Users, History, ClipboardList } from "lucide-react";
 import { BulkSupplierDialog } from "@/components/inventory/bulk-supplier-dialog";
 import { BulkPriceDialog } from "@/components/inventory/bulk-price-dialog";
 import { PriceHistoryDialog } from "@/components/inventory/price-history-dialog";
 import { ProductDetailsDialog } from "@/components/inventory/product-details-dialog";
+import { StockAdjustmentDialog } from "@/components/inventory/stock-adjustment-dialog";
+import { StockHistoryDialog } from "@/components/inventory/stock-history-dialog";
+import { AuditHistoryDialog } from "@/components/inventory/audit-history-dialog";
 
 
 export default function InventoryPage() {
@@ -47,6 +50,7 @@ export default function InventoryPage() {
   const [showBulkDialog, setShowBulkDialog] = useState(false);
   const [showSupplierDialog, setShowSupplierDialog] = useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
+  const [showAuditHistory, setShowAuditHistory] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
 
   // Details Modal State
@@ -150,37 +154,82 @@ export default function InventoryPage() {
             <p className="text-muted-foreground">Gestiona tus productos y stock.</p>
           </div>
           <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
-                    Acciones Masivas <ChevronDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuLabel>Actualizar Precios</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setShowSupplierDialog(true)}>
-                    <Users className="mr-2 h-4 w-4" /> Por Proveedor
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowHistoryDialog(true)}>
-                    <History className="mr-2 h-4 w-4" /> Historial de Cambios
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setIsSelectionMode(!isSelectionMode)}>
-                    <BoxSelect className="mr-2 h-4 w-4" /> {isSelectionMode ? "Ocultar Selección" : "Selección Manual"}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
+             {/* 1. SELECTION ACTION (Only appears when items selected) */}
              {isSelectionMode && selectedProducts.size > 0 && (
                  <Button 
-                    variant="secondary" 
+                    variant="default" // Primary style for the main active context action
                     onClick={() => setShowBulkDialog(true)}
+                    className="bg-blue-600 hover:bg-blue-700"
                  >
                     Actualizar {selectedProducts.size} productos
                  </Button>
              )}
 
+              {/* 2. STOCK CONTROL GROUP */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <ClipboardList className="h-4 w-4" />
+                    Control de Stock
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Auditorías</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => window.location.href='/inventory/audit'}>
+                    <ClipboardList className="mr-2 h-4 w-4" /> Iniciar Recuento Ciego
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowAuditHistory(true)}>
+                    <History className="mr-2 h-4 w-4" /> Historial de Auditorías
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* 3. TOOLS / BULK ACTIONS GROUP */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <BoxSelect className="h-4 w-4" />
+                    Herramientas
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Precios y Edición</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setIsSelectionMode(!isSelectionMode)}>
+                    <BoxSelect className="mr-2 h-4 w-4" /> 
+                    {isSelectionMode ? "Desactivar Selección" : "Selección Manual"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowSupplierDialog(true)}>
+                    <Users className="mr-2 h-4 w-4" /> Actualizar por Proveedor
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Datos</DropdownMenuLabel>
+                  <DropdownMenuItem asChild>
+                      {/* CsvActions usually renders a button, we might need to wrap or check usage. 
+                          CsvActions in current code is a component returning a specific structure.
+                          Let's keep CsvActions outside if it's complex, or if it fits here.
+                          Checking CsvActions usage: <CsvActions products={productList} />
+                          If it returns a DialogTrigger, we can't easily put it in a MenuItem without side effects.
+                          Let's look at CsvActions. If it returns a standard Button, maybe let's keep it distinct as "Import/Export"?
+                          For now, let's keep CSV separate as "Importar/Exportar".
+                      */}
+                      <div className="w-full cursor-default" onClick={(e) => e.stopPropagation()}>
+                         {/* Placeholder if we wanted to move CSV inside */}
+                      </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowHistoryDialog(true)}>
+                     <History className="mr-2 h-4 w-4" /> Historial de Precios
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* 4. CSV ACTIONS (Keep separate for visibility) */}
               <CsvActions products={productList} />
+
+              {/* 5. PRIMARY CREATE BUTTON */}
               <CreateProductDialog />
           </div>
         </div>
@@ -223,6 +272,7 @@ export default function InventoryPage() {
                 <TableHead>Stock</TableHead>
                 <TableHead className="text-right">Costo</TableHead>
                 <TableHead className="text-right">Precio</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -283,6 +333,15 @@ export default function InventoryPage() {
                           </TableCell>
                           <TableCell className="text-right text-muted-foreground">${product.cost || 0}</TableCell>
                           <TableCell className="text-right font-bold text-lg">${product.price}</TableCell>
+                          <TableCell className="text-right">
+                              <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                                  <StockAdjustmentDialog 
+                                      product={product} 
+                                      onSuccess={() => fetchProducts(page)}
+                                  />
+                                  <StockHistoryDialog product={product} />
+                              </div>
+                          </TableCell>
                       </TableRow>
                   )})
               )}
@@ -337,6 +396,11 @@ export default function InventoryPage() {
            onOpenChange={setDetailsOpen}
            product={selectedProductForDetails}
            onProductUpdated={() => fetchProducts(page)}
+        />
+        
+        <AuditHistoryDialog 
+            open={showAuditHistory}
+            onOpenChange={setShowAuditHistory}
         />
       </div>
   );

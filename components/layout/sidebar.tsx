@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Package, ShoppingCart, Settings, Menu, DollarSign, Receipt, Users, Truck, Wallet, TrendingDown } from "lucide-react"
+import { Home, Package, ShoppingCart, Settings, Menu, DollarSign, Receipt, Users, Truck, Wallet, TrendingDown, ClipboardList } from "lucide-react"
 import { useEffect, useState } from "react"
 import { supabase } from "@/utils/supabase/client"
 
