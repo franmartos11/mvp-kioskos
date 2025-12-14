@@ -4,6 +4,8 @@ import { KioskManager } from "@/components/custom/kiosk-manager"
 import { useEffect, useState } from "react"
 import { supabase } from "@/utils/supabase/client"
 import { useRouter } from "next/navigation"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ChangePasswordForm } from "@/components/settings/change-password-form"
 
 export default function SettingsPage() {
   const [isOwner, setIsOwner] = useState<boolean | null>(null)
@@ -39,11 +41,26 @@ export default function SettingsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Configuración</h1>
           <p className="text-muted-foreground">
-            Administra tus kioscos y permisos de empleados.
+            Administra tus kioscos, permisos y seguridad.
           </p>
         </div>
         
-        <KioskManager />
+        <Tabs defaultValue="general" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="security">Seguridad</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="general" className="space-y-4">
+            <KioskManager />
+          </TabsContent>
+          
+          <TabsContent value="security" className="space-y-4">
+            <div className="max-w-2xl">
+              <ChangePasswordForm />
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
   )
 }

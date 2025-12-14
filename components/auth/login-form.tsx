@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
+import { ForgotPasswordDialog } from "./forgot-password-dialog"
 
 export function LoginForm() {
   const [email, setEmail] = useState("")
@@ -63,6 +64,9 @@ export function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
+      </div>
+      <div className="flex justify-end">
+        <ForgotPasswordDialog />
       </div>
       <Button className="w-full" type="submit" disabled={loading}>
         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
