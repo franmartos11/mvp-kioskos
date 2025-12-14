@@ -1,6 +1,10 @@
 -- ==============================================================================
--- KIOSK APP - FULL SCHEMA V1
--- Consolidado: Public Profiles, Kiosks, Products, Sales, Suppliers, Cash & Employees
+-- MASTER SCHEMA
+-- Combined from: full_schema_v1.sql, financial_update.sql, and migrations 001-006
+-- ==============================================================================
+
+-- ==============================================================================
+-- PART 1: BASE SCHEMA (from full_schema_v1.sql)
 -- ==============================================================================
 
 -- 1. CORE & AUTH
@@ -26,7 +30,6 @@ create table if not exists public.kiosk_members (
 -- RLS: Kiosks & Members
 alter table public.kiosks enable row level security;
 alter table public.kiosk_members enable row level security;
--- (Note: Add specific RLS for Kiosks/Members if needed, usually managed by system/supabase-admin or strict policies)
 
 -- 2. INVENTORY
 -- ==============================================================================
@@ -89,7 +92,6 @@ create table if not exists public.suppliers (
 );
 
 alter table public.suppliers enable row level security;
--- Include basic View/Manage policies similar to products (omitted for brevity but implied)
 
 -- 4. SALES (POS)
 -- ==============================================================================
@@ -286,7 +288,16 @@ begin
 end;
 $$;
 
--- Dashboard Stats V2
+
+-- ==============================================================================
+-- PART 2: FINANCIAL UPDATES (from financial_update.sql)
+-- ==============================================================================
+
+-- 1. Add cost column to Sale Items
+alter table public.sale_items 
+add column if not exists cost decimal(10,2) not null default 0;
+
+-- 2. Update dashboard stats function for Real Gross Profit / Net Income
 create or replace function get_dashboard_stats_v2(
   p_user_id uuid,
   p_start_date timestamptz,
@@ -298,45 +309,207 @@ security definer
 as $$
 declare
   v_total_sales bigint;
-  v_total_revenue decimal;
-  v_total_expenses decimal;
+  v_total_revenue decimal;   -- Total facturado (Price * Qty)
+  v_total_cogs decimal;      -- Cost of Goods Sold (Cost * Qty)
+  v_gross_profit decimal;    -- Revenue - COGS
+  v_total_expenses decimal;  -- Gastos operativos
+  v_net_income decimal;      -- Gross Profit - Expenses
+  
   v_top_kiosk text;
-  v_trend json;
-  v_pie json;
   v_user_kiosks uuid[];
 begin
+  -- Get user's kiosks
   select array_agg(kiosk_id) into v_user_kiosks
   from kiosk_members
   where user_id = p_user_id;
 
-  select count(*), coalesce(sum(total), 0)
-  into v_total_sales, v_total_revenue
-  from sales
-  where created_at >= p_start_date and created_at <= p_end_date and kiosk_id = any(v_user_kiosks);
+  -- 1. Sales, Revenue & COGS
+  select 
+    count(distinct s.id), 
+    coalesce(sum(si.subtotal), 0),
+    coalesce(sum(si.quantity * si.cost), 0)
+  into v_total_sales, v_total_revenue, v_total_cogs
+  from sales s
+  join sale_items si on s.id = si.sale_id
+  where s.created_at >= p_start_date 
+    and s.created_at <= p_end_date
+    and s.kiosk_id = any(v_user_kiosks);
 
-  select coalesce(sum(amount), 0)
+  v_gross_profit := v_total_revenue - v_total_cogs;
+
+  -- 2. Expenses (Operational)
+  select 
+    coalesce(sum(amount), 0)
   into v_total_expenses
   from expenses
-  where date >= p_start_date and date <= p_end_date and kiosk_id = any(v_user_kiosks);
+  where date >= p_start_date 
+    and date <= p_end_date
+    and kiosk_id = any(v_user_kiosks);
 
+  v_net_income := v_gross_profit - v_total_expenses;
+
+  -- 3. Top Kiosk
   select k.name into v_top_kiosk
   from sales s
   join kiosks k on s.kiosk_id = k.id
-  where s.created_at >= p_start_date and s.created_at <= p_end_date and s.kiosk_id = any(v_user_kiosks)
+  where s.created_at >= p_start_date 
+    and s.created_at <= p_end_date
+    and s.kiosk_id = any(v_user_kiosks)
   group by k.name
   order by sum(s.total) desc
   limit 1;
 
-  -- (Omitting trend/pie details for brevity in this merged file but they should be here in real deployment)
-  -- Just passing empty or simplified for this consolidated view reference
   return json_build_object(
     'totalSales', v_total_sales,
     'totalRevenue', v_total_revenue,
+    'totalCost', v_total_cogs,
+    'grossProfit', v_gross_profit,
     'totalExpenses', v_total_expenses,
-    'netIncome', v_total_revenue - v_total_expenses,
+    'netIncome', v_net_income,
     'topKiosk', coalesce(v_top_kiosk, 'N/A'),
-    'trend', '[]'::json,
-    'pie', '[]'::json
+    'trend', '[]'::json, -- Placeholder
+    'pie', '[]'::json    -- Placeholder
   );
 end;
 $$;
+
+
+-- ==============================================================================
+-- PART 3: MIGRATIONS & FIXES (001-006)
+-- ==============================================================================
+
+-- 1. PRICE CHANGES HISTORY
+create table if not exists price_changes_history (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id),
+  created_at timestamptz default now(),
+  action_type text not null, -- 'BULK_MANUAL', 'BULK_SUPPLIER', 'REVERT'
+  description text,
+  affected_products jsonb -- Stores array of { id, name, old_price, new_price }
+);
+
+alter table price_changes_history enable row level security;
+
+drop policy if exists "Users can view history" on price_changes_history;
+create policy "Users can view history"
+  on price_changes_history for select
+  to authenticated
+  using (true);
+
+drop policy if exists "Users can insert history" on price_changes_history;
+create policy "Users can insert history"
+  on price_changes_history for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
+
+-- 2. FIX: KIOSK & MEMBERS POLICIES (Redefining for stricter/better control)
+-- Re-apply 'Users can create kiosks' just in case
+drop policy if exists "Users can create kiosks" on public.kiosks;
+create policy "Users can create kiosks"
+on public.kiosks for insert
+to authenticated
+with check (true);
+
+-- Fix Recursion Issue with 'is_kiosk_owner' function
+create or replace function public.is_kiosk_owner(p_kiosk_id uuid)
+returns boolean
+language plpgsql
+security definer
+as $$
+begin
+  return exists (
+    select 1 from public.kiosks
+    where id = p_kiosk_id
+    and owner_id = auth.uid()
+  );
+end;
+$$;
+
+grant execute on function public.is_kiosk_owner to authenticated;
+grant execute on function public.is_kiosk_owner to anon;
+
+-- Fix Kiosk Members Policy to avoid circular dependency
+drop policy if exists "View kiosk members" on public.kiosk_members;
+create policy "View kiosk members"
+on public.kiosk_members for select
+using (
+   -- Users can view their own membership
+   auth.uid() = user_id
+   OR
+   -- Owners can view members of their kiosks (using the safe function)
+   public.is_kiosk_owner(kiosk_id)
+);
+
+
+-- 3. RPC: Create Initial Kiosk (Helper for registration)
+create or replace function public.create_initial_kiosk(
+  p_kiosk_name text,
+  p_owner_id uuid
+)
+returns json
+language plpgsql
+security definer
+as $$
+declare
+  v_kiosk_id uuid;
+  v_kiosk_data json;
+begin
+  insert into public.kiosks (name, owner_id)
+  values (p_kiosk_name, p_owner_id)
+  returning id into v_kiosk_id;
+
+  insert into public.kiosk_members (user_id, kiosk_id, role)
+  values (p_owner_id, v_kiosk_id, 'owner');
+  
+  select json_build_object(
+    'id', id,
+    'name', name,
+    'owner_id', owner_id,
+    'created_at', created_at
+  ) into v_kiosk_data
+  from public.kiosks
+  where id = v_kiosk_id;
+
+  return v_kiosk_data;
+end;
+$$;
+
+grant execute on function public.create_initial_kiosk to public;
+grant execute on function public.create_initial_kiosk to anon;
+grant execute on function public.create_initial_kiosk to authenticated;
+
+
+-- 4. STORAGE POLICIES
+-- Create 'products' bucket if it doesn't exist
+insert into storage.buckets (id, name, public)
+values ('products', 'products', true)
+on conflict (id) do update set public = true;
+
+drop policy if exists "Public Access to Products" on storage.objects;
+create policy "Public Access to Products"
+on storage.objects for select
+using ( bucket_id = 'products' );
+
+drop policy if exists "Authenticated users can upload products" on storage.objects;
+create policy "Authenticated users can upload products"
+on storage.objects for insert
+to authenticated
+with check ( bucket_id = 'products' );
+
+drop policy if exists "Authenticated users can update products" on storage.objects;
+create policy "Authenticated users can update products"
+on storage.objects for update
+to authenticated
+using ( bucket_id = 'products' );
+
+drop policy if exists "Authenticated users can delete products" on storage.objects;
+create policy "Authenticated users can delete products"
+on storage.objects for delete
+to authenticated
+using ( bucket_id = 'products' );
+
+
+-- 5. LATEST UPDATES
+-- Add customer_name column to sales
+ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_name TEXT;
