@@ -56,8 +56,23 @@ export function RegisterForm() {
       }
 
       toast.success("¡Cuenta y Kiosco creados con éxito!")
-      router.push("/dashboard")
-      router.refresh()
+
+      if (authData.session) {
+          router.push("/dashboard")
+          router.refresh()
+      } else {
+          toast.info("Por favor confirma tu email para iniciar sesión.", {
+              duration: 6000,
+          })
+          // Reloading or redirecting to / ensures we show the login state (or user can toggle)
+          // Since we are on /, we can just reload to reset state or maybe use window.location.reload()
+          // Or just let the user see the toast. Ideally we switch to "Login" tab.
+          // Since we can't easily switch the parent state from here without props, 
+          // refreshing the page is a safe bet to clear the form and show Login (default state is login? No wait, default check logic).
+          router.push("/")
+           // Force reload to reset state to login
+           window.location.reload()
+      }
 
     } catch (error) {
       toast.error("Ocurrió un error inesperado")
