@@ -9,7 +9,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner"
 import { Loader2, LockKeyhole } from "lucide-react"
 
-export function ChangePasswordForm() {
+interface ChangePasswordFormProps {
+    onSuccess?: () => void
+}
+
+export function ChangePasswordForm({ onSuccess }: ChangePasswordFormProps) {
     const [password, setPassword] = useState("")
     const [confirmPassword, setConfirmPassword] = useState("")
     const [loading, setLoading] = useState(false)
@@ -39,6 +43,9 @@ export function ChangePasswordForm() {
                 toast.success("Contraseña actualizada exitosamente")
                 setPassword("")
                 setConfirmPassword("")
+                if (onSuccess) {
+                    onSuccess()
+                }
             }
         } catch (error) {
             console.error(error)

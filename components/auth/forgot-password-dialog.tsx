@@ -24,11 +24,12 @@ export function ForgotPasswordDialog() {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     setLoading(true)
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/dashboard`, // Usually redirects to an auth callback or directly to app
+        redirectTo: `${window.location.origin}/auth/callback?next=/update-password`,
       })
 
       if (error) {
@@ -49,7 +50,7 @@ export function ForgotPasswordDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="link" className="px-0 font-normal h-auto text-xs text-muted-foreground hover:text-primary">
+        <Button variant="link" type="button" className="px-0 font-normal h-auto text-xs text-muted-foreground hover:text-primary">
           ¿Olvidaste tu contraseña?
         </Button>
       </DialogTrigger>
