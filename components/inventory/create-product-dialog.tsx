@@ -54,13 +54,61 @@ const productSchema = z.object({
 
 type ProductFormValues = z.infer<typeof productSchema>
 
-export function CreateProductDialog() {
+import { Product } from "@/types/inventory"
+
+interface CreateProductDialogProps {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  onSuccess?: () => void
+  productToEdit?: Product | null
+}
+
+export function CreateProductDialog({ 
+  open: controlledOpen, 
+  onOpenChange, 
+  onSuccess,
+  productToEdit 
+}: CreateProductDialogProps = {}) {
   const { currentKiosk } = useKiosk()
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  
+  // Use controlled state if provided, otherwise internal
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen : internalOpen
+  const setOpen = isControlled ? onOpenChange : setInternalOpen
+
   const [showScanner, setShowScanner] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
   const router = useRouter()
+  
+  useEffect(() => {
+    if (open && productToEdit) {
+        form.reset({
+            name: productToEdit.name,
+            barcode: productToEdit.barcode || "",
+            price: productToEdit.price,
+            cost: productToEdit.cost,
+            stock: productToEdit.stock,
+            min_stock: productToEdit.min_stock || 5,
+            image_url: productToEdit.image_url,
+            supplier_id: productToEdit.supplier_id || "",
+        })
+        setPreview(productToEdit.image_url)
+    } else if (open && !productToEdit) {
+        form.reset({
+            name: "",
+            barcode: "",
+            price: 0,
+            cost: 0,
+            stock: 0,
+            min_stock: 5,
+            image_url: null,
+            supplier_id: "",
+        })
+        setPreview(null)
+    }
+  }, [open, productToEdit])
   
   // Remove explicit generic to allow inference and avoid "Type mismatch" with zodResolver
   const form = useForm({
@@ -94,9 +142,7 @@ export function CreateProductDialog() {
     }
 
     try {
-      const { error } = await supabase
-        .from("products")
-        .insert({
+      const productData = {
           name: values.name,
           barcode: values.barcode || null,
           price: values.price,
@@ -106,19 +152,37 @@ export function CreateProductDialog() {
           image_url: values.image_url || null,
           supplier_id: (values.supplier_id === "none" || !values.supplier_id) ? null : values.supplier_id,
           kiosk_id: currentKiosk.id,
-        })
+      }
+
+      let error
+      if (productToEdit) {
+          const { error: updateError } = await supabase
+              .from("products")
+              .update(productData)
+              .eq('id', productToEdit.id)
+          error = updateError
+      } else {
+          const { error: insertError } = await supabase
+            .from("products")
+            .insert(productData)
+          error = insertError
+      }
       
       if (error) throw error
 
-      toast.success("Producto creado correctamente")
-      setOpen(false)
-      form.reset()
-      setPreview(null)
+      toast.success(productToEdit ? "Producto actualizado" : "Producto creado correctamente")
+      
+      if (setOpen) setOpen(false) // Safe call if using internal/external toggle
+      if (onSuccess) onSuccess()
+      
+      if (!productToEdit) {
+          form.reset()
+          setPreview(null)
+      }
       router.refresh()
-      // Optional: Explicitly refresh inventory list if passed as prop, or reliance on router.refresh
     } catch (error) {
       console.error(error)
-      toast.error("Error al crear el producto")
+      toast.error(productToEdit ? "Error al actualizar" : "Error al crear el producto")
     }
   }
 
@@ -163,7 +227,7 @@ export function CreateProductDialog() {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Crear Nuevo Producto</DialogTitle>
+          <DialogTitle>{productToEdit ? "Editar Producto" : "Crear Nuevo Producto"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -330,7 +394,7 @@ export function CreateProductDialog() {
                 {form.formState.isSubmitting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Crear Producto
+                {productToEdit ? "Actualizar Producto" : "Crear Producto"}
               </Button>
             </DialogFooter>
           </form>

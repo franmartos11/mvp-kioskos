@@ -64,7 +64,7 @@ export function StockAdjustmentDialog({
   const supabase = createClient()
 
   const form = useForm<z.infer<typeof adjustmentSchema>>({
-    resolver: zodResolver(adjustmentSchema),
+    resolver: zodResolver(adjustmentSchema) as any, // Cast to any to bypass strict Resolver type mismatch with coercion
     defaultValues: {
       type: "restock",
       quantity: 0,

@@ -11,11 +11,17 @@ import { Product } from "@/types/inventory"
 import { OpenShiftDialog, CloseShiftDialog } from "@/components/pos/cash-register-dialog"
 import { useKiosk } from "@/components/providers/kiosk-provider"
 
+import { useProducts } from "@/hooks/use-products"
+
 export default function PosPage() {
   const { currentKiosk } = useKiosk()
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
   
+  // Use TanStack Query for products
+  const { 
+    data: products = [], 
+    isLoading: userProductsLoading 
+  } = useProducts(currentKiosk?.id)
+
   const [session, setSession] = useState<any>(null)
   const [loadingSession, setLoadingSession] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
@@ -41,20 +47,6 @@ export default function PosPage() {
         .maybeSingle()
         
     setSession(openSession)
-
-    // Load products for this kiosk
-    const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('kiosk_id', currentKiosk.id) // Filter by Kiosk!
-        .order('name')
-        .limit(50)
-
-    if (data) {
-        setProducts(data as Product[])
-    }
-    
-    setLoading(false)
     setLoadingSession(false)
   }
 
@@ -69,7 +61,7 @@ export default function PosPage() {
   }
 
   return (
-       (loading || loadingSession ? (
+       (userProductsLoading || loadingSession ? (
          <div className="flex h-full items-center justify-center text-muted-foreground gap-2">
             <Loader2 className="h-4 w-4 animate-spin" /> Cargando POS...
          </div>

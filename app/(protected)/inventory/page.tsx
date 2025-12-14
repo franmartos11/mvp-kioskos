@@ -10,7 +10,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Search, Image as ImageIcon } from "lucide-react";
+import { RefreshCw, Search, Plus, Filter, MoreHorizontal, Pencil, Trash, PackageCheck, History as HistoryIcon, Image as ImageIcon } from "lucide-react";
+import { useProducts } from "@/hooks/use-products";
 import { supabase } from "@/utils/supabase/client";
 import { Product } from "@/types/inventory";
 import { CreateProductDialog } from "@/components/inventory/create-product-dialog";
@@ -29,7 +30,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, BoxSelect, Users, History, ClipboardList } from "lucide-react";
+import { ChevronDown, BoxSelect, Users, ClipboardList } from "lucide-react";
 import { BulkSupplierDialog } from "@/components/inventory/bulk-supplier-dialog";
 import { BulkPriceDialog } from "@/components/inventory/bulk-price-dialog";
 import { PriceHistoryDialog } from "@/components/inventory/price-history-dialog";
@@ -42,14 +43,54 @@ import { useKiosk } from "@/components/providers/kiosk-provider";
 // ... existing imports
 
 export default function InventoryPage() {
-  const { currentKiosk } = useKiosk();
-  const isOwner = currentKiosk?.role === 'owner';
-  
-  const [productList, setProductList] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
-  const [count, setCount] = useState(0);
-  const ITEMS_PER_PAGE = 10;
+  const { currentKiosk } = useKiosk()
+  const [searchTerm, setSearchTerm] = useState("")
+  const [page, setPage] = useState(0)
+  const ITEMS_PER_PAGE = 10
+
+  // Use TanStack Query
+  const { 
+    data: allProducts = [], 
+    isLoading: isQueryLoading, 
+    isError,
+    error,
+    refetch 
+  } = useProducts(currentKiosk?.id)
+
+  const isLoading = isQueryLoading || !currentKiosk
+
+  useEffect(() => {
+      if (isError && error) {
+          toast.error("Error al cargar productos: " + error.message)
+      }
+  }, [isError, error])
+
+
+
+  // Reset page when search term changes
+  useEffect(() => {
+    setPage(0)
+  }, [searchTerm])
+
+  // Filter products client-side for search
+  const filteredProducts = allProducts.filter(product => {
+      const searchLower = searchTerm.toLowerCase()
+      return (
+          product.name.toLowerCase().includes(searchLower) ||
+          product.barcode?.toLowerCase().includes(searchLower) ||
+          (product as any).category?.name?.toLowerCase().includes(searchLower)
+      )
+  })
+
+  // Client-side pagination
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE) || 1
+  const paginatedProducts = filteredProducts.slice(
+    page * ITEMS_PER_PAGE,
+    (page + 1) * ITEMS_PER_PAGE
+  )
+
+  // Determine user role
+  const isOwner = currentKiosk?.role === 'owner'
   
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [showBulkDialog, setShowBulkDialog] = useState(false);
@@ -82,11 +123,11 @@ export default function InventoryPage() {
   const toggleAll = (checked: boolean) => {
     if (checked) {
       const newSelected = new Set(selectedProducts);
-      productList.forEach(p => newSelected.add(p.id));
+      filteredProducts.forEach(p => newSelected.add(p.id));
       setSelectedProducts(newSelected);
     } else {
       const newSelected = new Set(selectedProducts);
-      productList.forEach(p => newSelected.delete(p.id));
+      filteredProducts.forEach(p => newSelected.delete(p.id));
       setSelectedProducts(newSelected);
     }
   };
@@ -102,7 +143,7 @@ export default function InventoryPage() {
       } else {
           toast.success("Precios actualizados correctamente");
       }
-      fetchProducts(page);
+      refetch();
       setSelectedProducts(new Set());
     }
   };
@@ -113,51 +154,10 @@ export default function InventoryPage() {
       toast.error(result.error);
     } else {
       toast.success(`Precios actualizados para ${result.count} productos`);
-      fetchProducts(page);
+      refetch();
     }
   };
 
-  useEffect(() => {
-    if (currentKiosk) {
-        fetchProducts(page);
-    } else {
-        setProductList([]);
-        setCount(0);
-        setLoading(false);
-    }
-  }, [page, currentKiosk]);
-
-  async function fetchProducts(pageIndex: number) {
-    if (!currentKiosk) return;
-    
-    setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-         // Get total count
-         const { count: total } = await supabase
-            .from('products')
-            .select('*', { count: 'exact', head: true })
-            .eq('kiosk_id', currentKiosk.id)
-         
-         if (total !== null) setCount(total);
-
-         // Get paginated data
-         const from = pageIndex * ITEMS_PER_PAGE;
-         const to = from + ITEMS_PER_PAGE - 1;
-
-         const { data: products } = await supabase
-            .from('products')
-            .select('*')
-            .eq('kiosk_id', currentKiosk.id)
-            .order('created_at', { ascending: false })
-            .range(from, to);
-         
-         if (products) {
-            setProductList(products as Product[]);
-         }
-    }
-    setLoading(false);
-  }
   return (
     <div className="p-4 w-full space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -192,7 +192,7 @@ export default function InventoryPage() {
                     <ClipboardList className="mr-2 h-4 w-4" /> Iniciar Recuento Ciego
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowAuditHistory(true)}>
-                    <History className="mr-2 h-4 w-4" /> Historial de Auditorías
+                    <HistoryIcon className="mr-2 h-4 w-4" /> Historial de Auditorías
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -226,17 +226,17 @@ export default function InventoryPage() {
                           </div>
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setShowHistoryDialog(true)}>
-                         <History className="mr-2 h-4 w-4" /> Historial de Precios
+                         <HistoryIcon className="mr-2 h-4 w-4" /> Historial de Precios
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
               )}
 
               {/* 4. CSV ACTIONS (OWNER ONLY) */}
-              {isOwner && <CsvActions products={productList} />}
+              {isOwner && <CsvActions products={allProducts} />}
 
               {/* 5. PRIMARY CREATE BUTTON */}
-              <CreateProductDialog />
+              <CreateProductDialog onSuccess={refetch} />
           </div>
         </div>
 
@@ -247,6 +247,8 @@ export default function InventoryPage() {
                type="search"
                placeholder="Buscar por nombre o código..."
                className="pl-8"
+               value={searchTerm}
+               onChange={(e) => setSearchTerm(e.target.value)}
              />
            </div>
         </div>
@@ -266,7 +268,7 @@ export default function InventoryPage() {
                 {isSelectionMode && (
                   <TableHead className="w-[40px]">
                       <Checkbox 
-                          checked={productList.length > 0 && productList.every(p => selectedProducts.has(p.id))}
+                          checked={paginatedProducts.length > 0 && paginatedProducts.every(p => selectedProducts.has(p.id))}
                           onCheckedChange={(checked) => toggleAll(checked as boolean)}
                       />
                   </TableHead>
@@ -281,21 +283,22 @@ export default function InventoryPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {isLoading ? (
                 // ... loading rows ...
                 <TableRow>
                   <TableCell colSpan={isOwner ? 8 : 7} className="h-24 text-center">
+                    <RefreshCw className="animate-spin h-6 w-6 mx-auto mb-2" />
                     Cargando productos...
                   </TableCell>
                 </TableRow>
-              ) : productList.length === 0 ? (
+              ) : filteredProducts.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={isOwner ? 8 : 7} className="h-24 text-center">
-                    No hay productos cargados.
+                    No hay productos cargados o coincidencia.
                   </TableCell>
                 </TableRow>
               ) : (
-                  productList.map((product) => {
+                  paginatedProducts.map((product) => {
                       const isLowStock = product.stock <= (product.min_stock ?? 5);
                       return (
                       <TableRow 
@@ -344,7 +347,7 @@ export default function InventoryPage() {
                               <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                                   <StockAdjustmentDialog 
                                       product={product} 
-                                      onSuccess={() => fetchProducts(page)}
+                                      onSuccess={() => refetch()}
                                   />
                                   <StockHistoryDialog product={product} />
                               </div>
@@ -363,18 +366,18 @@ export default function InventoryPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0 || loading}
+                disabled={page === 0 || isLoading}
             >
                 Anterior
             </Button>
             <div className="text-sm text-muted-foreground">
-                Página {page + 1} de {Math.ceil(count / ITEMS_PER_PAGE) || 1}
+                Página {page + 1} de {totalPages}
             </div>
             <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setPage((p) => p + 1)}
-                disabled={(page + 1) * ITEMS_PER_PAGE >= count || loading}
+                disabled={page + 1 >= totalPages || isLoading}
             >
                 Siguiente
             </Button>
@@ -398,11 +401,13 @@ export default function InventoryPage() {
             onOpenChange={setShowHistoryDialog}
         />
 
+
+        
         <ProductDetailsDialog 
            open={detailsOpen}
            onOpenChange={setDetailsOpen}
            product={selectedProductForDetails}
-           onProductUpdated={() => fetchProducts(page)}
+           onProductUpdated={() => refetch()}
         />
         
         <AuditHistoryDialog 

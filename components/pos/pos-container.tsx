@@ -12,6 +12,8 @@ import { Search, ScanBarcode, ChevronUp, ChevronDown } from "lucide-react"
 import { BarcodeScanner } from "@/components/inventory/barcode-scanner"
 import { toast } from "sonner"
 import { supabase } from "@/utils/supabase/client"
+import { useCreateSale } from "@/hooks/use-create-sale"
+import { useBarcodeScanner } from "@/hooks/use-barcode-scanner"
 
 interface PosContainerProps {
   initialProducts: Product[]
@@ -44,8 +46,26 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
   }, [])
 
   // Products state to display
+  // Using query data now instead of local state for filtering?
+  // Actually, we need local filtering on top of the query data.
+  // But wait, displayedProducts was initialized from initialProducts.
+  // With useProducts, `products` comes from parent.
+  // Let's use filtered list based on `products` prop.
+  
   const [displayedProducts, setDisplayedProducts] = useState(initialProducts)
+  
+  // Sync displayedProducts with initialProducts when it updates (from Query)
+  useEffect(() => {
+    setDisplayedProducts(initialProducts)
+  }, [initialProducts])
+
   const [isSearching, setIsSearching] = useState(false)
+  const createSale = useCreateSale()
+
+  // Use global barcode scanner
+  useBarcodeScanner({
+      onScan: (code) => handleScan(code)
+  })
 
   // Debounce search
   useEffect(() => {
@@ -57,22 +77,17 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
 
         setIsSearching(true)
         try {
-            // Check if it's a barcode (numeric and long?)
-            // Just search both for simplicity using OR syntax
-            // Supabase: name.ilike.%query%, barcode.eq.query
-            // But barcode usually exact match.
-            
             const { data } = await supabase
                 .from('products')
-                .select('*')
+                .select('*, category:categories(name)') // Fix: ensure category is fetched if needed, though product type match is key
                 .or(`name.ilike.%${search}%,barcode.eq.${search}`)
+                .eq('kiosk_id', kioskId) // Ensure we search ONLY in this kiosk
                 .limit(20)
             
             if (data) {
-                setDisplayedProducts(data as Product[])
-                
-                // If exact barcode match, we might want to propose adding it directly? 
-                // The existing logic had enter-key scan. We can keep that or enhance.
+                // We need to cast or map to Product. 
+                // Since this is a search result, it might not match exactly the shape of 'initialProducts' if relations are missing.
+                setDisplayedProducts(data as any)
             }
         } catch (error) {
             console.error("Search error:", error)
@@ -82,9 +97,7 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
     }, 300)
 
     return () => clearTimeout(timer)
-  }, [search, initialProducts])
-
-  // Removed client-side filteredProducts, using displayedProducts now
+  }, [search, initialProducts, kioskId]) // Added kioskId dependency
   
   const addToCart = (product: Product) => {
     setCart(prev => {
@@ -99,25 +112,25 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
       return [...prev, { product, quantity: 1 }]
     })
     
-    // Clear search after exact match scan or selection if desired, 
-    // but maybe user wants to add multiple. Let's keep focus on search.
     searchInputRef.current?.focus()
   }
 
   const handleScan = async (code: string) => {
-    // Try finding in current list first
     let product = displayedProducts.find(p => p.barcode === code)
     
-    // If not found, fetch from DB directly
-    if (!product) {
-        const { data } = await supabase.from('products').select('*').eq('barcode', code).single()
-        if (data) product = data as Product
+    if (!product && kioskId) {
+        const { data } = await supabase
+            .from('products')
+            .select('*')
+            .eq('barcode', code)
+            .eq('kiosk_id', kioskId)
+            .single()
+        if (data) product = data as any
     }
 
     if (product) {
       addToCart(product)
       toast.success(`Agregado: ${product.name}`)
-      // Optional: beep sound
       setShowScanner(false)
     } else {
       toast.error("Producto no encontrado")
@@ -140,77 +153,34 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
 
   const handleCheckout = async (method: PaymentMethod, customerName?: string) => {
     if (cart.length === 0) return
-
-    const total = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)
-    
     if (!kioskId || !userId) {
         toast.error("Error de sesión: No se identificó el kiosco o usuario.")
         return
     }
 
-    // 1. Create Sale
-    const { data: sale, error: saleError } = await supabase
-        .from('sales')
-        .insert({
-            total,
-            payment_method: method,
-            kiosk_id: kioskId,
-            user_id: userId,
-            customer_name: customerName || null // Save customer name
-        })
-        .select()
-        .single()
-    
-    if (saleError) {
-        toast.error("Error al crear venta")
-        console.error("Sale Creation Error:", JSON.stringify(saleError, null, 2))
-        return
-    }
+    // Backup cart for rollback
+    const backupCart = [...cart]
 
-    // 2. Create Sale Items
-    const saleItems = cart.map(item => ({
-        sale_id: sale.id,
-        product_id: item.product.id,
-        quantity: item.quantity,
-        unit_price: item.product.price,
-        cost: item.product.cost || 0, // Capture historical cost
-        subtotal: item.product.price * item.quantity
-    }))
-
-    const { error: itemsError } = await supabase
-        .from('sale_items')
-        .insert(saleItems)
-
-    if (itemsError) {
-        toast.error("Error al guardar items")
-        console.error(itemsError)
-        // Ideally rollback sale here, but simplified for now
-        return
-    }
-
-    // 3. Update Stock (One by one for now, or could use RPC)
-    // Using a loop is not atomic but works for basic implementation
-    for (const item of cart) {
-        const newStock = item.product.stock - item.quantity
-        await supabase
-            .from('products')
-            .update({ stock: newStock })
-            .eq('id', item.product.id)
-    }
-    
-    toast.success("Venta realizada con éxito")
+    // OPTIMISTIC UI: Clear cart immediately and close dialog
     setCart([])
     setShowCheckout(false)
-    // Refresh products to show new stock
-    // In a real app we might use realtime subscription or optimistic updates
-    // For now, let's just update local state.
-    setDisplayedProducts(prev => prev.map(p => {
-        const inCart = cart.find(c => c.product.id === p.id)
-        if (inCart) {
-            return { ...p, stock: p.stock - inCart.quantity }
+    toast.success("Venta procesada") // Optimistic success message
+
+    // Trigger mutation
+    createSale.mutate({
+        cart: backupCart,
+        kioskId,
+        userId,
+        method,
+        customerName
+    }, {
+        onError: () => {
+            // Rollback UI if failed
+            setCart(backupCart)
+            setShowCheckout(true) // Re-open to let user try again
+            // Toast error is handled in hook
         }
-        return p
-    }))
+    })
   }
 
   return (

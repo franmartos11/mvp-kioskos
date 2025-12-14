@@ -10,4 +10,7 @@ export type Product = {
   kiosk_id: string | null;
   min_stock?: number;
   supplier_id?: string | null;
+  category_id?: string | null;
+  category?: { name: string } | null;
+  supplier?: { name: string } | null;
 };
