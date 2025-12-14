@@ -260,6 +260,7 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
                         key={product.id} 
                         product={product} 
                         onAdd={addToCart} 
+                        onRemove={(p) => updateQuantity(p.id, -1)}
                         quantity={inCart?.quantity || 0}
                     />
                 )

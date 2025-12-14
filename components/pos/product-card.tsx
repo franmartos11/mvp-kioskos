@@ -1,13 +1,14 @@
 import { Product } from "@/types/inventory"
-import { Plus, Image as ImageIcon } from "lucide-react"
+import { Plus, Minus, Image as ImageIcon } from "lucide-react"
 
 interface ProductCardProps {
   product: Product
   onAdd: (product: Product) => void
+  onRemove: (product: Product) => void
   quantity?: number
 }
 
-export function ProductCard({ product, onAdd, quantity = 0 }: ProductCardProps) {
+export function ProductCard({ product, onAdd, onRemove, quantity = 0 }: ProductCardProps) {
   return (
     <div 
       className={`flex flex-col border rounded-xl overflow-hidden bg-card hover:bg-accent/50 transition-all cursor-pointer group relative h-full min-h-[240px] ${
@@ -16,9 +17,20 @@ export function ProductCard({ product, onAdd, quantity = 0 }: ProductCardProps) 
       onClick={() => onAdd(product)}
     >
       {quantity > 0 && (
-          <div className="absolute top-2 right-2 z-10 bg-primary text-primary-foreground font-bold rounded-full w-7 h-7 flex items-center justify-center text-xs shadow-md animate-in zoom-in">
-              {quantity}
-          </div>
+          <>
+            <div 
+                className="absolute top-2 left-2 z-20 bg-destructive text-destructive-foreground font-bold rounded-full w-8 h-8 flex items-center justify-center shadow-md animate-in zoom-in hover:bg-destructive/90 transition-colors"
+                onClick={(e) => {
+                    e.stopPropagation()
+                    onRemove(product)
+                }}
+            >
+               <Minus className="h-4 w-4" />
+            </div>
+            <div className="absolute top-2 right-2 z-10 bg-primary text-primary-foreground font-bold rounded-full w-7 h-7 flex items-center justify-center text-xs shadow-md animate-in zoom-in">
+                {quantity}
+            </div>
+          </>
       )}
       <div className="relative h-32 w-full bg-muted shrink-0">
         {product.image_url ? (
