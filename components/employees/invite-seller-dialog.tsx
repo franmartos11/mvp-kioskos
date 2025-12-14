@@ -10,6 +10,7 @@ import { supabase } from "@/utils/supabase/client"
 import { toast } from "sonner"
 import { Loader2, UserPlus, Search } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useKiosk } from "@/components/providers/kiosk-provider"
 
 interface Kiosk {
   id: string
@@ -22,6 +23,12 @@ interface InviteSellerDialogProps {
 }
 
 export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps) {
+  const { currentKiosk } = useKiosk()
+
+  if (!currentKiosk || currentKiosk.role !== 'owner') {
+      return null
+  }
+
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   

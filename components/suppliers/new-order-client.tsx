@@ -37,9 +37,12 @@ interface Supplier {
     name: string
 }
 
+import { useKiosk } from "@/components/providers/kiosk-provider"
+
 export function NewOrderClient() {
     const router = useRouter()
-    const [loading, setLoading] = useState(false)
+    const { currentKiosk } = useKiosk()
+    const [loading, setLoading] = useState(true) // Start true to wait for checks
     const [saving, setSaving] = useState(false)
     
     // State
@@ -52,21 +55,29 @@ export function NewOrderClient() {
     
     const [items, setItems] = useState<OrderItem[]>([])
 
-    // Load initial data
     useEffect(() => {
-        async function load() {
+        // Protect Route
+        if (currentKiosk && currentKiosk.role !== 'owner') {
+            toast.error("No tienes permisos para realizar pedidos")
+            router.push('/suppliers')
+            return
+        }
+
+        async function load(kioskId: string) {
             setLoading(true)
             const [supRes, prodRes] = await Promise.all([
                 supabase.from('suppliers').select('id, name').order('name'),
-                supabase.from('products').select('*').order('name').limit(50)
+                supabase.from('products').select('*').eq('kiosk_id', kioskId).order('name').limit(50)
             ])
             
             if (supRes.data) setSuppliers(supRes.data)
             if (prodRes.data) setProducts(prodRes.data as Product[])
             setLoading(false)
         }
-        load()
-    }, [])
+        if (currentKiosk) {
+            load(currentKiosk.id)
+        }
+    }, [currentKiosk, router])
 
     // Search logic
     useEffect(() => {

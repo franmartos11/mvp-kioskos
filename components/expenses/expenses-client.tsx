@@ -11,37 +11,30 @@ import { es } from "date-fns/locale"
 import { Plus, Search, Filter, TrendingDown } from "lucide-react"
 import { AddExpenseDialog } from "./add-expense-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useKiosk } from "@/components/providers/kiosk-provider"
 
 export function ExpensesClient() {
+    const { currentKiosk } = useKiosk()
     const [expenses, setExpenses] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
     const [categoryFilter, setCategoryFilter] = useState("all")
     const [dialogOpen, setDialogOpen] = useState(false)
-    const [kioskId, setKioskId] = useState<string | null>(null)
 
     useEffect(() => {
-        loadData()
-    }, [])
-
-    async function loadData() {
-        setLoading(true)
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const { data: member } = await supabase.from('kiosk_members').select('kiosk_id').eq('user_id', user.id).maybeSingle()
-        if (member) {
-            setKioskId(member.kiosk_id)
-            fetchExpenses(member.kiosk_id)
+        if (currentKiosk) {
+            fetchExpenses()
         }
-        setLoading(false)
-    }
+    }, [categoryFilter, currentKiosk])
 
-    async function fetchExpenses(kId: string) {
+    async function fetchExpenses() {
+        if (!currentKiosk) return
+        setLoading(true)
+        
         let query = supabase
             .from('expenses')
             .select('*')
-            .eq('kiosk_id', kId)
+            .eq('kiosk_id', currentKiosk.id)
             .order('date', { ascending: false })
             
         if (categoryFilter !== "all") {
@@ -54,12 +47,8 @@ export function ExpensesClient() {
         } else {
             setExpenses(data || [])
         }
+        setLoading(false)
     }
-
-    // Effect to refetch when filter changes
-    useEffect(() => {
-        if (kioskId) fetchExpenses(kioskId)
-    }, [categoryFilter, kioskId])
 
 
     const filteredExpenses = expenses.filter(ex => 
@@ -170,12 +159,12 @@ export function ExpensesClient() {
                 </CardContent>
             </Card>
 
-            {kioskId && (
+            {currentKiosk && (
                 <AddExpenseDialog 
                     open={dialogOpen} 
                     onOpenChange={setDialogOpen}
-                    kioskId={kioskId}
-                    onSuccess={() => fetchExpenses(kioskId)}
+                    kioskId={currentKiosk.id}
+                    onSuccess={() => fetchExpenses()}
                 />
             )}
         </div>

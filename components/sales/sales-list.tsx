@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { useKiosk } from "@/components/providers/kiosk-provider"
 
 interface SaleItem {
   id: string
@@ -59,6 +60,7 @@ interface Sale {
 }
 
 export function SalesList() {
+  const { currentKiosk } = useKiosk()
   const [date, setDate] = useState<Date | undefined>(new Date())
   const [sales, setSales] = useState<Sale[]>([])
   const [loading, setLoading] = useState(true)
@@ -68,12 +70,13 @@ export function SalesList() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
 
   useEffect(() => {
-    if (date) {
+    if (date && currentKiosk) {
       fetchSales(date)
     }
-  }, [date])
+  }, [date, currentKiosk])
 
   const fetchSales = async (selectedDate: Date) => {
+    if (!currentKiosk) return
     setLoading(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -90,6 +93,7 @@ export function SalesList() {
           *,
           kiosks (name)
         `)
+        .eq('kiosk_id', currentKiosk.id)
         .gte('created_at', startOfDay.toISOString())
         .lte('created_at', endOfDay.toISOString())
         .order('created_at', { ascending: false })

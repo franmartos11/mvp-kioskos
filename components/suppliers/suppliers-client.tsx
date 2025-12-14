@@ -38,7 +38,11 @@ interface Supplier {
     created_at: string
 }
 
+import { useKiosk } from "@/components/providers/kiosk-provider"
+
 export function SuppliersClient() {
+    const { currentKiosk } = useKiosk()
+    const isOwner = currentKiosk?.role === 'owner'
     const [suppliers, setSuppliers] = useState<Supplier[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState("")
@@ -91,14 +95,18 @@ export function SuppliersClient() {
                     <p className="text-muted-foreground">Gestiona tus proveedores y contactos.</p>
                 </div>
                 <div className="flex gap-2">
-                    <Link href="/suppliers/new-order">
-                        <Button variant="outline">
-                            <ShoppingCart className="mr-2 h-4 w-4" /> Nuevo Pedido
-                        </Button>
-                    </Link>
-                    <Button onClick={() => { setSelectedSupplier(null); setIsAddOpen(true); }}>
-                        <Plus className="mr-2 h-4 w-4" /> Nuevo Proveedor
-                    </Button>
+                    {isOwner && (
+                        <>
+                            <Link href="/suppliers/new-order">
+                                <Button variant="outline">
+                                    <ShoppingCart className="mr-2 h-4 w-4" /> Nuevo Pedido
+                                </Button>
+                            </Link>
+                            <Button onClick={() => { setSelectedSupplier(null); setIsAddOpen(true); }}>
+                                <Plus className="mr-2 h-4 w-4" /> Nuevo Proveedor
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -179,12 +187,16 @@ export function SuppliersClient() {
                                                                 <DropdownMenuItem onClick={() => { setSelectedSupplier(supplier); setIsDetailsOpen(true); }}>
                                                                     <Truck className="mr-2 h-4 w-4" /> Ver Detalle
                                                                 </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => { setSelectedSupplier(supplier); setIsAddOpen(true); }}>
-                                                                    <Pencil className="mr-2 h-4 w-4" /> Editar
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => handleDelete(supplier.id)} className="text-destructive focus:text-destructive">
-                                                                    <Trash className="mr-2 h-4 w-4" /> Eliminar
-                                                                </DropdownMenuItem>
+                                                                {isOwner && (
+                                                                    <>
+                                                                        <DropdownMenuItem onClick={() => { setSelectedSupplier(supplier); setIsAddOpen(true); }}>
+                                                                            <Pencil className="mr-2 h-4 w-4" /> Editar
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuItem onClick={() => handleDelete(supplier.id)} className="text-destructive focus:text-destructive">
+                                                                            <Trash className="mr-2 h-4 w-4" /> Eliminar
+                                                                        </DropdownMenuItem>
+                                                                    </>
+                                                                )}
                                                             </DropdownMenuContent>
                                                         </DropdownMenu>
                                                     </TableCell>

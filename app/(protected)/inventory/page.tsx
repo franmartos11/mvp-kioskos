@@ -43,6 +43,8 @@ import { useKiosk } from "@/components/providers/kiosk-provider";
 
 export default function InventoryPage() {
   const { currentKiosk } = useKiosk();
+  const isOwner = currentKiosk?.role === 'owner';
+  
   const [productList, setProductList] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -156,10 +158,8 @@ export default function InventoryPage() {
     }
     setLoading(false);
   }
-
   return (
-      <div className="p-4 w-full space-y-6">
-        {/* ... Header and controls ... */}
+    <div className="p-4 w-full space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Inventario</h1>
@@ -167,7 +167,7 @@ export default function InventoryPage() {
           </div>
           <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
              {/* 1. SELECTION ACTION (Only appears when items selected) */}
-             {isSelectionMode && selectedProducts.size > 0 && (
+             {isSelectionMode && selectedProducts.size > 0 && isOwner && (
                  <Button 
                     variant="default" // Primary style for the main active context action
                     onClick={() => setShowBulkDialog(true)}
@@ -197,49 +197,43 @@ export default function InventoryPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* 3. TOOLS / BULK ACTIONS GROUP */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2">
-                    <BoxSelect className="h-4 w-4" />
-                    Herramientas
-                    <ChevronDown className="h-4 w-4 opacity-50" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Precios y Edición</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setIsSelectionMode(!isSelectionMode)}>
-                    <BoxSelect className="mr-2 h-4 w-4" /> 
-                    {isSelectionMode ? "Desactivar Selección" : "Selección Manual"}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowSupplierDialog(true)}>
-                    <Users className="mr-2 h-4 w-4" /> Actualizar por Proveedor
-                  </DropdownMenuItem>
-                  
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Datos</DropdownMenuLabel>
-                  <DropdownMenuItem asChild>
-                      {/* CsvActions usually renders a button, we might need to wrap or check usage. 
-                          CsvActions in current code is a component returning a specific structure.
-                          Let's keep CsvActions outside if it's complex, or if it fits here.
-                          Checking CsvActions usage: <CsvActions products={productList} />
-                          If it returns a DialogTrigger, we can't easily put it in a MenuItem without side effects.
-                          Let's look at CsvActions. If it returns a standard Button, maybe let's keep it distinct as "Import/Export"?
-                          For now, let's keep CSV separate as "Importar/Exportar".
-                      */}
-                      <div className="w-full cursor-default" onClick={(e) => e.stopPropagation()}>
-                         {/* Placeholder if we wanted to move CSV inside */}
-                      </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowHistoryDialog(true)}>
-                     <History className="mr-2 h-4 w-4" /> Historial de Precios
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {/* 3. TOOLS / BULK ACTIONS GROUP (OWNER ONLY) */}
+              {isOwner && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="gap-2">
+                        <BoxSelect className="h-4 w-4" />
+                        Herramientas
+                        <ChevronDown className="h-4 w-4 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Precios y Edición</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setIsSelectionMode(!isSelectionMode)}>
+                        <BoxSelect className="mr-2 h-4 w-4" /> 
+                        {isSelectionMode ? "Desactivar Selección" : "Selección Manual"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setShowSupplierDialog(true)}>
+                        <Users className="mr-2 h-4 w-4" /> Actualizar por Proveedor
+                      </DropdownMenuItem>
+                      
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel>Datos</DropdownMenuLabel>
+                      <DropdownMenuItem asChild>
+                          <div className="w-full cursor-default" onClick={(e) => e.stopPropagation()}>
+                             {/* Placeholder */}
+                          </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setShowHistoryDialog(true)}>
+                         <History className="mr-2 h-4 w-4" /> Historial de Precios
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+              )}
 
-              {/* 4. CSV ACTIONS (Keep separate for visibility) */}
-              <CsvActions products={productList} />
+              {/* 4. CSV ACTIONS (OWNER ONLY) */}
+              {isOwner && <CsvActions products={productList} />}
 
               {/* 5. PRIMARY CREATE BUTTON */}
               <CreateProductDialog />
@@ -247,7 +241,6 @@ export default function InventoryPage() {
         </div>
 
         <div className="flex items-center space-x-2">
-           {/* ... Search ... */}
            <div className="relative flex-1 max-w-sm">
              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
              <Input
@@ -257,7 +250,7 @@ export default function InventoryPage() {
              />
            </div>
         </div>
-
+        
         <Card>
             <CardHeader>
                 <CardTitle>Productos</CardTitle>
@@ -282,21 +275,22 @@ export default function InventoryPage() {
                 <TableHead>Nombre</TableHead>
                 <TableHead>Código</TableHead>
                 <TableHead>Stock</TableHead>
-                <TableHead className="text-right">Costo</TableHead>
+                {isOwner && <TableHead className="text-right">Costo</TableHead>}
                 <TableHead className="text-right">Precio</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
+                // ... loading rows ...
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
+                  <TableCell colSpan={isOwner ? 8 : 7} className="h-24 text-center">
                     Cargando productos...
                   </TableCell>
                 </TableRow>
               ) : productList.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
+                  <TableCell colSpan={isOwner ? 8 : 7} className="h-24 text-center">
                     No hay productos cargados.
                   </TableCell>
                 </TableRow>
@@ -318,6 +312,7 @@ export default function InventoryPage() {
                             </TableCell>
                           )}
                           <TableCell>
+                            {/* ... Image ... */}
                             {product.image_url ? (
                                /* eslint-disable-next-line @next/next/no-img-element */
                               <img 
@@ -343,7 +338,7 @@ export default function InventoryPage() {
                                   <span>{product.stock}</span>
                               )}
                           </TableCell>
-                          <TableCell className="text-right text-muted-foreground">${product.cost || 0}</TableCell>
+                          {isOwner && <TableCell className="text-right text-muted-foreground">${product.cost || 0}</TableCell>}
                           <TableCell className="text-right font-bold text-lg">${product.price}</TableCell>
                           <TableCell className="text-right">
                               <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
@@ -414,6 +409,6 @@ export default function InventoryPage() {
             open={showAuditHistory}
             onOpenChange={setShowAuditHistory}
         />
-      </div>
+    </div>
   );
 }

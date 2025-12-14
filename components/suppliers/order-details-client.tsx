@@ -36,11 +36,15 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+import { useKiosk } from "@/components/providers/kiosk-provider"
+
 interface OrderDetailsClientProps {
     orderId: string
 }
 
 export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
+    const { currentKiosk } = useKiosk()
+    const isOwner = currentKiosk?.role === 'owner'
     const router = useRouter()
     const [loading, setLoading] = useState(true)
     const [order, setOrder] = useState<any>(null)
@@ -237,8 +241,8 @@ export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
                                 <TableRow>
                                     <TableHead>Producto</TableHead>
                                     <TableHead className="text-right">Cantidad</TableHead>
-                                    <TableHead className="text-right">Costo</TableHead>
-                                    <TableHead className="text-right">Total</TableHead>
+                                    {isOwner && <TableHead className="text-right">Costo</TableHead>}
+                                    {isOwner && <TableHead className="text-right">Total</TableHead>}
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -246,14 +250,16 @@ export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
                                     <TableRow key={item.id}>
                                         <TableCell className="font-medium">{item.product.name}</TableCell>
                                         <TableCell className="text-right">{item.quantity}</TableCell>
-                                        <TableCell className="text-right">${item.cost}</TableCell>
-                                        <TableCell className="text-right font-bold">${item.subtotal}</TableCell>
+                                        {isOwner && <TableCell className="text-right">${item.cost}</TableCell>}
+                                        {isOwner && <TableCell className="text-right font-bold">${item.subtotal}</TableCell>}
                                     </TableRow>
                                 ))}
-                                <TableRow>
-                                    <TableCell colSpan={3} className="text-right font-bold text-lg">Total</TableCell>
-                                    <TableCell className="text-right font-bold text-lg">${order.total_amount}</TableCell>
-                                </TableRow>
+                                {isOwner && (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="text-right font-bold text-lg">Total</TableCell>
+                                        <TableCell className="text-right font-bold text-lg">${order.total_amount}</TableCell>
+                                    </TableRow>
+                                )}
                             </TableBody>
                         </Table>
                     </CardContent>
@@ -288,72 +294,75 @@ export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
                         </CardContent>
                     </Card>
 
-                    {/* Action 2: Payment */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base flex items-center gap-2">
-                                <Wallet className="h-4 w-4" /> Pagos
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {order.payment_status !== 'paid' ? (
-                                <div className="space-y-4">
-                                    <p className="text-sm text-muted-foreground">
-                                        Registra un pago para esta orden.
-                                    </p>
-                                    
-                                    <Dialog>
-                                        <DialogTrigger asChild>
-                                            <Button variant="secondary" className="w-full">Registrar Pago</Button>
-                                        </DialogTrigger>
-                                        <DialogContent>
-                                            <DialogHeader>
-                                                <DialogTitle>Registrar Pago a Proveedor</DialogTitle>
-                                                <DialogDescription>
-                                                    El pago saldrá de la caja seleccionada o fondos externos.
-                                                </DialogDescription>
-                                            </DialogHeader>
-                                            <div className="grid gap-4 py-4">
-                                                <div className="grid grid-cols-4 items-center gap-4">
-                                                    <span className="text-sm font-medium">Monto</span>
-                                                    <Input 
-                                                        className="col-span-3" 
-                                                        type="number" 
-                                                        value={paymentAmount}
-                                                        onChange={(e) => setPaymentAmount(e.target.value)}
-                                                    />
+
+                    {/* Action 2: Payment (Owner Only) */}
+                    {isOwner && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <Wallet className="h-4 w-4" /> Pagos
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {order.payment_status !== 'paid' ? (
+                                    <div className="space-y-4">
+                                        <p className="text-sm text-muted-foreground">
+                                            Registra un pago para esta orden.
+                                        </p>
+                                        
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <Button variant="secondary" className="w-full">Registrar Pago</Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle>Registrar Pago a Proveedor</DialogTitle>
+                                                    <DialogDescription>
+                                                        El pago saldrá de la caja seleccionada o fondos externos.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <div className="grid gap-4 py-4">
+                                                    <div className="grid grid-cols-4 items-center gap-4">
+                                                        <span className="text-sm font-medium">Monto</span>
+                                                        <Input 
+                                                            className="col-span-3" 
+                                                            type="number" 
+                                                            value={paymentAmount}
+                                                            onChange={(e) => setPaymentAmount(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="grid grid-cols-4 items-center gap-4">
+                                                        <span className="text-sm font-medium">Método</span>
+                                                        <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                                                            <SelectTrigger className="col-span-3">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="cash_register">Efectivo de Caja (Actual)</SelectItem>
+                                                                <SelectItem value="cash_external">Efectivo Externo</SelectItem>
+                                                                <SelectItem value="transfer">Transferencia Bancaria</SelectItem>
+                                                                <SelectItem value="other">Otro</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
                                                 </div>
-                                                <div className="grid grid-cols-4 items-center gap-4">
-                                                    <span className="text-sm font-medium">Método</span>
-                                                    <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                                                        <SelectTrigger className="col-span-3">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="cash_register">Efectivo de Caja (Actual)</SelectItem>
-                                                            <SelectItem value="cash_external">Efectivo Externo</SelectItem>
-                                                            <SelectItem value="transfer">Transferencia Bancaria</SelectItem>
-                                                            <SelectItem value="other">Otro</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            </div>
-                                            <DialogFooter>
-                                                <Button onClick={handleRegisterPayment} disabled={paying}>
-                                                    {paying ? "Registrando..." : "Confirmar Pago"}
-                                                </Button>
-                                            </DialogFooter>
-                                        </DialogContent>
-                                    </Dialog>
-                                </div>
-                            ) : (
-                                <div className="p-3 bg-muted rounded-md flex items-center gap-2 text-sm text-muted-foreground">
-                                    <CheckCircle className="h-4 w-4 text-green-600" />
-                                    Orden pagada en su totalidad.
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                                                <DialogFooter>
+                                                    <Button onClick={handleRegisterPayment} disabled={paying}>
+                                                        {paying ? "Registrando..." : "Confirmar Pago"}
+                                                    </Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+                                    </div>
+                                ) : (
+                                    <div className="p-3 bg-muted rounded-md flex items-center gap-2 text-sm text-muted-foreground">
+                                        <CheckCircle className="h-4 w-4 text-green-600" />
+                                        Orden pagada en su totalidad.
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
             </div>
         </div>

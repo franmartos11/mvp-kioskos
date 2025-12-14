@@ -1,5 +1,7 @@
 "use client"
 
+import { useKiosk } from "@/components/providers/kiosk-provider"
+
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { format } from "date-fns"
@@ -32,8 +34,12 @@ export function SupplierOrdersList() {
     const [orders, setOrders] = useState<SupplierOrder[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState("")
+    const { currentKiosk } = useKiosk()
+    const isOwner = currentKiosk?.role === 'owner'
 
     useEffect(() => {
+        if (!currentKiosk) return
+
         const fetchOrders = async () => {
             setLoading(true)
             const { data, error } = await supabase
@@ -46,6 +52,7 @@ export function SupplierOrdersList() {
                     status,
                     supplier:suppliers(name)
                 `)
+                .eq('kiosk_id', currentKiosk.id)
                 .order('date', { ascending: false })
             
             if (data) {
@@ -56,7 +63,7 @@ export function SupplierOrdersList() {
         }
 
         fetchOrders()
-    }, [])
+    }, [currentKiosk])
 
     const filteredOrders = orders.filter(o => 
         o.supplier.name.toLowerCase().includes(search.toLowerCase())
@@ -81,7 +88,7 @@ export function SupplierOrdersList() {
                              <TableHead>Fecha</TableHead>
                              <TableHead>Proveedor</TableHead>
                              <TableHead>Estado</TableHead>
-                             <TableHead className="text-right">Total</TableHead>
+                             {isOwner && <TableHead className="text-right">Total</TableHead>}
                              <TableHead className="text-right w-[100px]">Acciones</TableHead>
                          </TableRow>
                      </TableHeader>
@@ -120,9 +127,11 @@ export function SupplierOrdersList() {
                                               order.status === 'completed' ? 'Completado' : order.status}
                                          </Badge>
                                      </TableCell>
-                                     <TableCell className="text-right font-bold">
-                                         ${order.total_amount.toFixed(2)}
-                                     </TableCell>
+                                     {isOwner && (
+                                         <TableCell className="text-right font-bold">
+                                             ${order.total_amount.toFixed(2)}
+                                         </TableCell>
+                                     )}
                                      <TableCell className="text-right">
                                         <Link href={`/suppliers/orders/${order.id}`}>
                                             <Button size="icon" variant="ghost">

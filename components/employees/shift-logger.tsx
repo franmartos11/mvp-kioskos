@@ -10,6 +10,7 @@ import { supabase } from "@/utils/supabase/client"
 import { toast } from "sonner"
 import { Loader2, Timer } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useKiosk } from "@/components/providers/kiosk-provider"
 
 interface Employee {
     id?: string
@@ -26,6 +27,12 @@ interface ShiftLoggerProps {
 }
 
 export function ShiftLogger({ employees, kiosks, onLog }: ShiftLoggerProps) {
+  const { currentKiosk } = useKiosk()
+  
+  if (!currentKiosk || currentKiosk.role !== 'owner') {
+      return null
+  }
+
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   

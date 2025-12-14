@@ -45,6 +45,12 @@ export default async function DashboardPage() {
         role: m.role
   }))
 
+  const isAnyOwner = kiosks.some((k: any) => k.role === 'owner')
+  
+  if (!isAnyOwner) {
+      return redirect("/pos")
+  }
+
   const initialStats = statsRes.data || null
 
   return (

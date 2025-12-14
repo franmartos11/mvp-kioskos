@@ -23,26 +23,9 @@ const navItems = [
 
 export function MainNav({ className, ...props }: React.HTMLAttributes<HTMLElement>) {
   const pathname = usePathname()
-  const [isOwner, setIsOwner] = useState(false)
-
-  useEffect(() => {
-    const checkRole = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data } = await supabase
-        .from('kiosk_members')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'owner')
-        .limit(1)
-      
-      if (data && data.length > 0) {
-        setIsOwner(true)
-      }
-    }
-    checkRole()
-  }, [])
+  const { currentKiosk } = useKiosk()
+  
+  const isOwner = currentKiosk?.role === 'owner'
 
   return (
     <nav
@@ -55,15 +38,13 @@ export function MainNav({ className, ...props }: React.HTMLAttributes<HTMLElemen
             return null
         }
 
+        // Hide Dashboard if not owner
+        if (item.href === "/dashboard" && !isOwner) {
+            return null
+        }
+
         const Icon = item.icon
         const isActive = pathname === item.href
-        
-        // Hide "Inicio" in MainNav if we want specific behavior, but for now just show all items.
-// ... existing logic ...
-        if (item.href === "/" && pathname !== "/") {
-             // Maybe we don't want a "Back to Login" button if we are logged in? 
-             // But let's leave as is for now, the main request is hiding the whole bar.
-        }
 
         return (
           <Link
@@ -110,6 +91,7 @@ function useAuth() {
 }
 
 import { KioskSwitcher } from "./kiosk-switcher"
+import { useKiosk } from "@/components/providers/kiosk-provider"
 
 // ... imports
 
