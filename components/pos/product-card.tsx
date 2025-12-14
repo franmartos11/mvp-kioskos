@@ -11,7 +11,7 @@ interface ProductCardProps {
 export function ProductCard({ product, onAdd, onRemove, quantity = 0 }: ProductCardProps) {
   return (
     <div 
-      className={`flex flex-col border rounded-xl overflow-hidden bg-card hover:bg-accent/50 transition-all cursor-pointer group relative h-full min-h-[240px] ${
+      className={`flex flex-col border rounded-xl overflow-hidden bg-card hover:bg-accent/50 transition-all cursor-pointer group relative h-full min-h-[200px] lg:min-h-[240px] ${
         quantity > 0 ? 'border-primary ring-1 ring-primary bg-primary/5' : ''
       }`}
       onClick={() => onAdd(product)}
@@ -32,7 +32,7 @@ export function ProductCard({ product, onAdd, onRemove, quantity = 0 }: ProductC
             </div>
           </>
       )}
-      <div className="relative h-32 w-full bg-muted shrink-0">
+      <div className="relative h-24 lg:h-32 w-full bg-muted shrink-0">
         {product.image_url ? (
             /* eslint-disable-next-line @next/next/no-img-element */
           <img 
@@ -42,17 +42,17 @@ export function ProductCard({ product, onAdd, onRemove, quantity = 0 }: ProductC
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
-            <ImageIcon className="h-10 w-10 text-muted-foreground/50" />
+            <ImageIcon className="h-8 w-8 lg:h-10 lg:w-10 text-muted-foreground/50" />
           </div>
         )}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
              <Plus className="text-white h-8 w-8 drop-shadow-md" />
         </div>
       </div>
-      <div className="p-3 flex flex-col justify-between flex-1 gap-2 bg-secondary/30 border-t min-h-[85px]">
-        <h3 className="font-semibold text-base leading-tight line-clamp-2" title={product.name}>{product.name}</h3>
+      <div className="p-2 lg:p-3 flex flex-col justify-between flex-1 gap-1 lg:gap-2 bg-secondary/30 border-t min-h-[70px] lg:min-h-[85px]">
+        <h3 className="font-semibold text-sm lg:text-base leading-tight line-clamp-2" title={product.name}>{product.name}</h3>
         <div className="mt-auto">
-            <span className="font-bold text-2xl text-primary block text-right w-full" title={`$${product.price}`}>${product.price ?? 0}</span>
+            <span className="font-bold text-lg lg:text-2xl text-primary block text-right w-full" title={`$${product.price}`}>${product.price ?? 0}</span>
         </div>
       </div>
     </div>

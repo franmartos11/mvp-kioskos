@@ -8,7 +8,7 @@ import { Cart } from "./cart"
 import { CheckoutDialog } from "./checkout-dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Search, ScanBarcode } from "lucide-react"
+import { Search, ScanBarcode, ChevronUp, ChevronDown } from "lucide-react"
 import { BarcodeScanner } from "@/components/inventory/barcode-scanner"
 import { toast } from "sonner"
 import { supabase } from "@/utils/supabase/client"
@@ -18,6 +18,7 @@ interface PosContainerProps {
 }
 
 export function PosContainer({ initialProducts }: PosContainerProps) {
+  const [isCartOpen, setIsCartOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [cart, setCart] = useState<CartItem[]>([])
   const [showScanner, setShowScanner] = useState(false)
@@ -247,7 +248,7 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
             </Button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto content-start flex-1 min-h-[300px] p-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 lg:gap-4 overflow-y-auto content-start flex-1 min-h-[300px] p-2 pb-[80px] lg:pb-2">
             {isSearching && (
                  <div className="col-span-full h-10 flex items-center justify-center text-muted-foreground animate-pulse">
                      Buscando...
@@ -273,32 +274,49 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
         </div>
       </div>
 
-      {/* Right: Cart */}
-      <div className="w-full lg:w-[350px] flex flex-col bg-background border rounded-xl shadow-sm h-[300px] lg:h-full">
-        <div className="p-4 border-b">
+      {/* Right: Cart (Collapsible on mobile, Fixed on Desktop) */}
+      <div 
+        className={`
+            fixed bottom-0 left-0 right-0 z-50 bg-background border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out rounded-t-xl
+            lg:static lg:w-[350px] lg:flex lg:flex-col lg:border lg:rounded-xl lg:shadow-sm lg:h-full lg:z-0
+            ${isCartOpen ? 'h-[80vh]' : 'h-[70px] lg:h-full'}
+        `}
+      >
+        <div 
+            className="p-4 border-b flex items-center justify-between cursor-pointer lg:cursor-default bg-muted/20 lg:bg-transparent rounded-t-xl"
+            onClick={() => setIsCartOpen(!isCartOpen)}
+        >
             <h2 className="font-semibold text-lg flex items-center gap-2">
                 Carrito
                 <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
                     {cart.reduce((s, i) => s + i.quantity, 0)}
                 </span>
             </h2>
+            <div className="flex items-center gap-2 lg:hidden">
+                <span className="font-bold text-primary">
+                    ${cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)}
+                </span>
+                {isCartOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
+            </div>
         </div>
         
-        <Cart 
-            items={cart} 
-            onUpdateQuantity={updateQuantity} 
-            onRemove={removeFromCart} 
-        />
-        
-        <div className="p-4 bg-muted/20">
-            <Button 
-                className="w-full text-lg h-12" 
-                size="lg"
-                disabled={cart.length === 0}
-                onClick={() => setShowCheckout(true)}
-            >
-                Cobrar
-            </Button>
+        <div className={`flex flex-col flex-1 overflow-hidden ${!isCartOpen ? 'hidden lg:flex' : 'flex'}`}>
+            <Cart 
+                items={cart} 
+                onUpdateQuantity={updateQuantity} 
+                onRemove={removeFromCart} 
+            />
+            
+            <div className="p-4 bg-muted/20 mt-auto">
+                <Button 
+                    className="w-full text-lg h-12 rounded-xl" 
+                    size="lg"
+                    disabled={cart.length === 0}
+                    onClick={() => setShowCheckout(true)}
+                >
+                    Cobrar
+                </Button>
+            </div>
         </div>
       </div>
 
