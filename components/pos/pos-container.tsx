@@ -138,7 +138,7 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
     setCart(prev => prev.filter(item => item.product.id !== productId))
   }
 
-  const handleCheckout = async (method: PaymentMethod) => {
+  const handleCheckout = async (method: PaymentMethod, customerName?: string) => {
     if (cart.length === 0) return
 
     const total = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)
@@ -155,7 +155,8 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
             total,
             payment_method: method,
             kiosk_id: kioskId,
-            user_id: userId
+            user_id: userId,
+            customer_name: customerName || null // Save customer name
         })
         .select()
         .single()

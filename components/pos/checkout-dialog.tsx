@@ -12,25 +12,28 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 import { Loader2 } from "lucide-react"
 
 interface CheckoutDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   items: CartItem[]
-  onConfirm: (method: PaymentMethod) => Promise<void>
+  onConfirm: (method: PaymentMethod, customerName?: string) => Promise<void>
 }
 
 export function CheckoutDialog({ open, onOpenChange, items, onConfirm }: CheckoutDialogProps) {
   const [method, setMethod] = useState<PaymentMethod>("cash")
   const [loading, setLoading] = useState(false)
   
+  const [customerName, setCustomerName] = useState("")
+  
   const total = items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)
 
   async function handleConfirm() {
     try {
         setLoading(true)
-        await onConfirm(method)
+        await onConfirm(method, customerName)
     } finally {
         setLoading(false)
     }
@@ -66,6 +69,17 @@ export function CheckoutDialog({ open, onOpenChange, items, onConfirm }: Checkou
                     </SelectContent>
                 </Select>
             </div>
+
+            {method === 'transfer' && (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                    <label className="text-sm font-medium">Nombre de quien transfiere</label>
+                    <Input 
+                        placeholder="Ej: Juan Pérez" 
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                    />
+                </div>
+            )}
         </div>
 
         <DialogFooter>
