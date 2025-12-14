@@ -9,4 +9,5 @@ export type Product = {
   image_url: string | null;
   kiosk_id: string | null;
   min_stock?: number;
+  supplier_id?: string | null;
 };

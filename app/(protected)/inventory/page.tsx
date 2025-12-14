@@ -33,6 +33,7 @@ import { ChevronDown, BoxSelect, Users, History } from "lucide-react";
 import { BulkSupplierDialog } from "@/components/inventory/bulk-supplier-dialog";
 import { BulkPriceDialog } from "@/components/inventory/bulk-price-dialog";
 import { PriceHistoryDialog } from "@/components/inventory/price-history-dialog";
+import { ProductDetailsDialog } from "@/components/inventory/product-details-dialog";
 
 
 export default function InventoryPage() {
@@ -47,6 +48,17 @@ export default function InventoryPage() {
   const [showSupplierDialog, setShowSupplierDialog] = useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+
+  // Details Modal State
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedProductForDetails, setSelectedProductForDetails] = useState<Product | null>(null);
+
+  const handleProductClick = (product: Product) => {
+    if (!isSelectionMode) {
+      setSelectedProductForDetails(product);
+      setDetailsOpen(true);
+    }
+  };
 
   const toggleProduct = (id: string) => {
     const newSelected = new Set(selectedProducts);
@@ -230,9 +242,13 @@ export default function InventoryPage() {
                   productList.map((product) => {
                       const isLowStock = product.stock <= (product.min_stock ?? 5);
                       return (
-                      <TableRow key={product.id} className="hover:bg-muted/50 transition-colors">
+                      <TableRow 
+                        key={product.id} 
+                        className={`transition-colors ${isSelectionMode ? 'hover:bg-muted/50' : 'cursor-pointer hover:bg-muted/50'}`}
+                        onClick={() => handleProductClick(product)}
+                      >
                           {isSelectionMode && (
-                            <TableCell>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
                                 <Checkbox 
                                     checked={selectedProducts.has(product.id)}
                                     onCheckedChange={() => toggleProduct(product.id)}
@@ -314,6 +330,13 @@ export default function InventoryPage() {
         <PriceHistoryDialog 
             open={showHistoryDialog}
             onOpenChange={setShowHistoryDialog}
+        />
+
+        <ProductDetailsDialog 
+           open={detailsOpen}
+           onOpenChange={setDetailsOpen}
+           product={selectedProductForDetails}
+           onProductUpdated={() => fetchProducts(page)}
         />
       </div>
   );
