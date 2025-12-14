@@ -49,6 +49,7 @@ interface Sale {
   payment_method: string
   kiosk_id: string
   items?: SaleItem[] // Optional till fetched
+  customer_name?: string | null
   kiosks: {
       name: string
   }
@@ -78,16 +79,10 @@ export function SalesList() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      // Start and end of day formatting
       const startOfDay = new Date(selectedDate)
       startOfDay.setHours(0, 0, 0, 0)
       const endOfDay = new Date(selectedDate)
       endOfDay.setHours(23, 59, 59, 999)
-
-      // Get user's kiosks to filter? Or just show all sales relevant to user's permissions
-      // Assuming RLS handles "seeing sales of my kiosk", we just query sales.
-      // But we probably want to filter by kiosks the user is a member of.
-      // For simplicity, let's trust RLS or just query (if owner, sees all).
       
       const { data, error } = await supabase
         .from('sales')
@@ -103,9 +98,6 @@ export function SalesList() {
       setSales(data || [])
     } catch (error) {
       console.error("Error fetching sales:", JSON.stringify(error, null, 2))
-      if ((error as any)?.message) {
-        // toast.error("Error: " + (error as any).message) 
-      }
     } finally {
       setLoading(false)
     }
@@ -193,7 +185,6 @@ export function SalesList() {
                   <div className="text-2xl font-bold">
                       {formatCurrency(sales.reduce((acc, curr) => acc + curr.total, 0))}
                   </div>
-                  <p className="text-xs text-muted-foreground">+0% respecto a ayer (mock)</p>
               </CardContent>
           </Card>
           <Card>
@@ -205,7 +196,6 @@ export function SalesList() {
                   <div className="text-2xl font-bold">
                       {sales.length}
                   </div>
-                  <p className="text-xs text-muted-foreground">Operaciones registradas</p>
               </CardContent>
           </Card>
           <Card>
@@ -217,7 +207,6 @@ export function SalesList() {
                   <div className="text-2xl font-bold">
                       {formatCurrency(sales.length > 0 ? sales.reduce((acc, curr) => acc + curr.total, 0) / sales.length : 0)}
                   </div>
-                  <p className="text-xs text-muted-foreground">Promedio por venta</p>
               </CardContent>
           </Card>
       </div>
@@ -250,9 +239,16 @@ export function SalesList() {
                     </TableCell>
                     <TableCell>{sale.kiosks?.name || 'Unknown'}</TableCell>
                     <TableCell>
-                        <div className="flex items-center gap-2">
-                             {sale.payment_method === 'card' ? <CreditCard className="w-3 h-3"/> : <DollarSign className="w-3 h-3"/>}
-                             {translatePaymentMethod(sale.payment_method)}
+                        <div className="flex flex-col">
+                             <div className="flex items-center gap-2">
+                                 {sale.payment_method === 'card' ? <CreditCard className="w-3 h-3"/> : <DollarSign className="w-3 h-3"/>}
+                                 {translatePaymentMethod(sale.payment_method)}
+                             </div>
+                             {sale.customer_name && (
+                                 <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                     👤 {sale.customer_name}
+                                 </span>
+                             )}
                         </div>
                     </TableCell>
                     <TableCell className="text-right font-bold text-green-600">
@@ -272,37 +268,49 @@ export function SalesList() {
 
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
           <DialogContent className="max-w-md">
-              <DialogHeader>
-                  <DialogTitle>Detalle de Venta</DialogTitle>
-                  <DialogDescription>
-                      Detalle de la transacción del {selectedSale && format(new Date(selectedSale.created_at), "d 'de' MMMM 'a las' HH:mm", { locale: es })}
+              <DialogHeader className="border-b pb-4">
+                  <DialogTitle className="text-center text-xl">Ticket de Venta</DialogTitle>
+                  <DialogDescription className="text-center space-y-1">
+                      <span className="block font-mono text-xs text-muted-foreground">{selectedSale?.id}</span>
+                      <span className="block">{selectedSale && format(new Date(selectedSale.created_at), "PPP 'a las' HH:mm", { locale: es })}</span>
+                      <span className="block font-medium text-foreground">{selectedSale?.kiosks?.name}</span>
                   </DialogDescription>
               </DialogHeader>
               
-              <div className="py-4 space-y-4">
+              <div className="py-2 space-y-4">
                   {detailsLoading ? (
-                      <div className="text-center">Cargando items...</div>
+                      <div className="text-center py-8 text-muted-foreground">Cargando items...</div>
                   ) : (
                       <>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             {saleItems.map((item) => (
-                                <div key={item.id} className="flex justify-between items-center text-sm border-b pb-2 last:border-0">
-                                    <div>
+                                <div key={item.id} className="flex justify-between items-start text-sm">
+                                    <div className="flex-1">
                                         <div className="font-medium">{item.products?.name}</div>
                                         <div className="text-xs text-muted-foreground">{item.quantity} x {formatCurrency(item.unit_price)}</div>
                                     </div>
-                                    <div className="font-semibold">
+                                    <div className="font-semibold tabular-nums">
                                         {formatCurrency(item.subtotal)}
                                     </div>
                                 </div>
                             ))}
                         </div>
-                        <div className="flex justify-between items-center pt-4 border-t font-bold text-lg">
-                            <span>Total</span>
-                            <span>{selectedSale && formatCurrency(selectedSale.total)}</span>
-                        </div>
-                        <div className="text-xs text-muted-foreground text-center pt-2">
-                            ID: {selectedSale?.id}
+                        
+                        <div className="border-t pt-4 space-y-2">
+                            {selectedSale?.customer_name && (
+                                <div className="flex justify-between items-center text-sm text-muted-foreground">
+                                    <span>Pagado por:</span>
+                                    <span className="font-medium text-foreground">{selectedSale.customer_name}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between items-center text-sm text-muted-foreground">
+                                <span>Método de pago:</span>
+                                <span className="font-medium text-foreground capitalize">{translatePaymentMethod(selectedSale?.payment_method || '')}</span>
+                            </div>
+                            <div className="flex justify-between items-center pt-2 border-t font-bold text-xl">
+                                <span>Total</span>
+                                <span>{selectedSale && formatCurrency(selectedSale.total)}</span>
+                            </div>
                         </div>
                       </>
                   )}
