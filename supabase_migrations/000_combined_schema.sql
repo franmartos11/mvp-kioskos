@@ -1,10 +1,11 @@
 -- ==============================================================================
--- MASTER SCHEMA
--- Combined from: full_schema_v1.sql, financial_update.sql, and migrations 001-006
+-- MASTER SCHEMA (CONSOLIDATED)
+-- Combined from previous 000 + 001-005 migrations
+-- Timestamp: 2025-12-14
 -- ==============================================================================
 
 -- ==============================================================================
--- PART 1: BASE SCHEMA (from full_schema_v1.sql)
+-- PART 1: BASE SCHEMA
 -- ==============================================================================
 
 -- 1. CORE & AUTH
@@ -44,7 +45,7 @@ create table if not exists public.products (
   stock integer not null default 0,
   min_stock integer default 5, -- Low stock alert threshold
   barcode text,
-  category text,
+  category text, 
   image_url text,
   cost decimal(10,2) default 0, -- Cost per unit
   kiosk_id uuid references public.kiosks(id),
@@ -513,3 +514,374 @@ using ( bucket_id = 'products' );
 -- 5. LATEST UPDATES
 -- Add customer_name column to sales
 ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_name TEXT;
+
+
+-- ==============================================================================
+-- INCLUDED MIGRATION 001: STOCK CONTROL
+-- ==============================================================================
+
+-- 1. Create stock_movements table
+create table if not exists public.stock_movements (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  
+  product_id uuid references public.products(id) on delete cascade not null,
+  kiosk_id uuid references public.kiosks(id) not null,
+  user_id uuid references auth.users(id) not null,
+  
+  type text not null check (type in ('sale', 'restock', 'correction', 'loss', 'return')),
+  quantity integer not null, -- Positive adds to stock, negative removes
+  reason text, -- For corrections/losses e.g. "Expired", "Stolen"
+  notes text,
+  
+  -- Snapshot of cost/price at the time of movement (Optional but good for auditing)
+  cost_at_time decimal(10,2),
+  price_at_time decimal(10,2)
+);
+
+-- 2. Enable RLS
+alter table public.stock_movements enable row level security;
+
+create policy "Users can view movements of their kiosk"
+on public.stock_movements for select
+using (
+  exists (
+    select 1 from public.kiosk_members
+    where kiosk_members.user_id = auth.uid()
+    and kiosk_members.kiosk_id = stock_movements.kiosk_id
+  )
+);
+
+create policy "Users can insert movements for their kiosk"
+on public.stock_movements for insert
+with check (
+  exists (
+    select 1 from public.kiosk_members
+    where kiosk_members.user_id = auth.uid()
+    and kiosk_members.kiosk_id = stock_movements.kiosk_id
+  )
+);
+
+-- 3. RPC: Register Stock Adjustment
+-- This function handles the atomic update of the product stock AND the creation of the movement record
+create or replace function public.register_stock_adjustment(
+  p_product_id uuid,
+  p_kiosk_id uuid,
+  p_type text, -- 'restock', 'correction', 'loss', 'return'
+  p_quantity integer, -- Absolute Value. Logic will handle sign.
+  p_reason text,
+  p_notes text
+)
+returns void
+language plpgsql
+security definer
+as $$
+declare
+  v_final_quantity integer;
+  v_current_stock integer;
+begin
+  if p_type = 'loss' or p_type = 'sale' then
+     v_final_quantity := -1 * abs(p_quantity);
+  else
+     if p_type = 'restock' or p_type = 'return' then
+        v_final_quantity := abs(p_quantity);
+     elsif p_type = 'loss' then
+        v_final_quantity := -1 * abs(p_quantity);
+     else 
+        v_final_quantity := p_quantity; 
+     end if;
+  end if;
+
+  -- 1. Insert Movement
+  insert into public.stock_movements (
+    product_id, kiosk_id, user_id, type, quantity, reason, notes
+  ) values (
+    p_product_id, p_kiosk_id, auth.uid(), p_type, v_final_quantity, p_reason, p_notes
+  );
+
+  -- 2. Update Product Stock
+  update public.products
+  set stock = stock + v_final_quantity
+  where id = p_product_id;
+  
+end;
+$$;
+
+
+-- ==============================================================================
+-- INCLUDED MIGRATION 002: STOCK AUDIT
+-- ==============================================================================
+
+-- 1. Create stock_audits table
+create table if not exists public.stock_audits (
+  id uuid default gen_random_uuid() primary key,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  
+  kiosk_id uuid references public.kiosks(id) not null,
+  performed_by uuid references auth.users(id) not null,
+  
+  status text not null default 'in_progress' check (status in ('in_progress', 'completed', 'cancelled')),
+  completed_at timestamp with time zone,
+  
+  notes text
+);
+
+-- 2. Create stock_audit_items table
+create table if not exists public.stock_audit_items (
+  id uuid default gen_random_uuid() primary key,
+  audit_id uuid references public.stock_audits(id) on delete cascade not null,
+  product_id uuid references public.products(id) not null,
+  
+  expected_stock integer not null, -- Snapshot of what the system thought we had
+  counted_stock integer not null,  -- What was actually counted
+  difference integer generated always as (counted_stock - expected_stock) stored
+);
+
+-- 3. RLS
+alter table public.stock_audits enable row level security;
+alter table public.stock_audit_items enable row level security;
+
+create policy "Users can view audits of their kiosk"
+on public.stock_audits for select
+using (
+  exists (
+    select 1 from public.kiosk_members
+    where kiosk_members.user_id = auth.uid()
+    and kiosk_members.kiosk_id = stock_audits.kiosk_id
+  )
+);
+
+create policy "Users can insert audits for their kiosk"
+on public.stock_audits for insert
+with check (
+  exists (
+    select 1 from public.kiosk_members
+    where kiosk_members.user_id = auth.uid()
+    and kiosk_members.kiosk_id = stock_audits.kiosk_id
+  )
+);
+
+create policy "Users can update audits for their kiosk"
+on public.stock_audits for update
+using (
+  exists (
+    select 1 from public.kiosk_members
+    where kiosk_members.user_id = auth.uid()
+    and kiosk_members.kiosk_id = stock_audits.kiosk_id
+  )
+);
+
+-- Items policies
+create policy "Users can view audit items of their kiosk"
+on public.stock_audit_items for select
+using (
+  exists (
+    select 1 from public.stock_audits
+    join public.kiosk_members on stock_audits.kiosk_id = kiosk_members.kiosk_id
+    where stock_audit_items.audit_id = stock_audits.id
+    and kiosk_members.user_id = auth.uid()
+  )
+);
+
+create policy "Users can insert audit items for their kiosk"
+on public.stock_audit_items for insert
+with check (
+  exists (
+    select 1 from public.stock_audits
+    join public.kiosk_members on stock_audits.kiosk_id = kiosk_members.kiosk_id
+    where stock_audit_items.audit_id = stock_audits.id
+    and kiosk_members.user_id = auth.uid()
+  )
+);
+
+-- 4. RPC: Finish Audit
+-- Receives a JSON array of items: [{ product_id: uuid, quantity: int }]
+create or replace function public.finish_stock_audit(
+  p_audit_id uuid,
+  p_items jsonb
+)
+returns void
+language plpgsql
+security definer
+as $$
+declare
+  v_item jsonb;
+  v_product_id uuid;
+  v_counted_stock integer;
+  v_current_stock integer;
+  v_diff integer;
+  v_kiosk_id uuid;
+  v_status text;
+begin
+  -- Check audit status
+  select status, kiosk_id into v_status, v_kiosk_id
+  from public.stock_audits
+  where id = p_audit_id;
+  
+  if v_status != 'in_progress' then
+    raise exception 'Audit is not in progress';
+  end if;
+
+  -- Iterate items
+  for v_item in select * from jsonb_array_elements(p_items)
+  loop
+    v_product_id := (v_item->>'product_id')::uuid;
+    v_counted_stock := (v_item->>'quantity')::integer;
+    
+    -- Get current expected stock
+    select stock into v_current_stock
+    from public.products
+    where id = v_product_id;
+    
+    if v_current_stock is null then
+        continue; -- Skip if product doesn't exist?
+    end if;
+    
+    v_diff := v_counted_stock - v_current_stock;
+    
+    -- Record item in audit log
+    insert into public.stock_audit_items (audit_id, product_id, expected_stock, counted_stock)
+    values (p_audit_id, v_product_id, v_current_stock, v_counted_stock);
+    
+    -- If there is a difference, make a correction
+    if v_diff != 0 then
+        perform public.register_stock_adjustment(
+            v_product_id,
+            v_kiosk_id,
+            'correction',
+            v_diff,
+            'Audit Correction',
+            'Auto-correction from Audit #' || p_audit_id::text
+        );
+    end if;
+  end loop;
+
+  -- Close the audit
+  update public.stock_audits
+  set status = 'completed',
+  completed_at = now()
+  where id = p_audit_id;
+  
+end;
+$$;
+
+
+-- ==============================================================================
+-- INCLUDED MIGRATION 003: AUDIT REVERT
+-- ==============================================================================
+
+create or replace function public.revert_stock_audit(
+  p_audit_id uuid
+)
+returns void
+language plpgsql
+security definer
+as $$
+declare
+  v_audit_record record;
+  v_item record;
+  v_diff integer;
+begin
+  -- 1. Get Audit and verify it is completed
+  select * into v_audit_record
+  from public.stock_audits
+  where id = p_audit_id;
+  
+  if v_audit_record.status != 'completed' then
+    raise exception 'Solo se pueden cancelar auditorías completadas';
+  end if;
+  
+  -- 2. Iterate items and revert changes
+  for v_item in select * from public.stock_audit_items where audit_id = p_audit_id
+  loop
+     v_diff := v_item.counted_stock - v_item.expected_stock;
+     
+     if v_diff != 0 then
+         perform public.register_stock_adjustment(
+            v_item.product_id,
+            v_audit_record.kiosk_id,
+            'correction',
+            -1 * v_diff, -- Reverse the adjustment
+            'Audit Revert',
+            'Reverting Audit #' || p_audit_id::text
+         );
+     end if;
+  end loop;
+
+  -- 3. Update Audit Status
+  update public.stock_audits
+  set status = 'cancelled',
+  notes = coalesce(notes, '') || ' [Cancelled/Reverted]'
+  where id = p_audit_id;
+
+end;
+$$;
+
+
+-- ==============================================================================
+-- INCLUDED MIGRATION 004: CATEGORIES & RELATIONS
+-- ==============================================================================
+
+-- 1. Create categories table first!
+CREATE TABLE IF NOT EXISTS public.categories (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  kiosk_id UUID REFERENCES public.kiosks(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(kiosk_id, name)
+);
+
+-- 2. Enable RLS on categories
+ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view categories of their kiosk" ON public.categories;
+CREATE POLICY "Users can view categories of their kiosk" ON public.categories
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.kiosk_members 
+      WHERE kiosk_members.user_id = auth.uid() 
+      AND kiosk_members.kiosk_id = categories.kiosk_id
+    )
+  );
+
+DROP POLICY IF EXISTS "Owners can manage categories" ON public.categories;
+CREATE POLICY "Owners can manage categories" ON public.categories
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM public.kiosk_members 
+      WHERE kiosk_members.user_id = auth.uid() 
+      AND kiosk_members.kiosk_id = categories.kiosk_id
+      AND kiosk_members.role = 'owner'
+    )
+  );
+
+-- 3. Add Foreign Key column to products safely
+DO $$ 
+BEGIN
+    -- Add column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='category_id') THEN
+        ALTER TABLE public.products ADD COLUMN category_id UUID REFERENCES public.categories(id) ON DELETE SET NULL;
+    END IF;
+END $$;
+
+
+-- ==============================================================================
+-- INCLUDED MIGRATION 005: KIOSK RLS FIX
+-- ==============================================================================
+
+-- Fix: Allow users to view kiosks they own or belong to
+DROP POLICY IF EXISTS "Users can view their kiosks" ON public.kiosks;
+
+CREATE POLICY "Users can view their kiosks"
+ON public.kiosks FOR SELECT
+USING (
+    -- Access if owner
+    auth.uid() = owner_id
+    OR
+    -- Access if member (seller)
+    EXISTS (
+        SELECT 1 FROM public.kiosk_members
+        WHERE kiosk_members.kiosk_id = kiosks.id
+        AND kiosk_members.user_id = auth.uid()
+    )
+);

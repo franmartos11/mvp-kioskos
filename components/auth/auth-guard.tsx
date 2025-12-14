@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useRouter, usePathname } from "next/navigation"
 import { supabase } from "@/utils/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -74,7 +75,17 @@ export function AuthGuard({ children }: AuthGuardProps) {
     }
   }, [router, pathname])
 
+  const queryClient = useQueryClient()
+
   const handleLogout = async () => {
+    // 1. Clear local state
+    localStorage.removeItem("kiosk_id")
+    
+    // 2. Clear query cache to avoid mixture of data between users
+    queryClient.removeQueries()
+    queryClient.clear()
+
+    // 3. Sign out
     const { error } = await supabase.auth.signOut()
     if (error) {
       toast.error("Error al cerrar sesión")
