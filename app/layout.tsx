@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Sidebar, MobileNav } from "@/components/layout/sidebar";
 import { Toaster } from "@/components/ui/sonner"
 import { KioskProvider } from "@/components/providers/kiosk-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { ClientLayout } from "@/components/layout/client-layout";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -29,19 +29,13 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-muted/20`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background`}
       >
         <QueryProvider>
             <KioskProvider>
-                <div className="flex min-h-screen">
-                    <Sidebar />
-                    <div className="flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out w-full max-w-[100vw] overflow-x-hidden">
-                        <MobileNav />
-                        <main className="flex-1 p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto">
-                            {children}
-                        </main>
-                    </div>
-                </div>
+                <ClientLayout>
+                    {children}
+                </ClientLayout>
                 <Toaster />
             </KioskProvider>
         </QueryProvider>

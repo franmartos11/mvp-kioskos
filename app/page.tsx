@@ -200,7 +200,7 @@ export default function LandingPage() {
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                      {/* Testimonial 1 */}
-                     <div className="flex flex-col p-6 bg-muted/20 rounded-2xl border hover:border-primary/20 transition-colors">
+                     <div className="flex flex-col p-6 bg-card rounded-2xl border hover:shadow-lg transition-all duration-300">
                         <div className="text-primary mb-4">★★★★★</div>
                         <p className="text-muted-foreground mb-6 italic">
                             "Antes usaba un cuaderno y perdía mucha plata. Ahora sé exactamente cuánto gano por día. Es increíble."
@@ -214,7 +214,7 @@ export default function LandingPage() {
                         </div>
                      </div>
                      {/* Testimonial 2 */}
-                     <div className="flex flex-col p-6 bg-muted/20 rounded-2xl border hover:border-primary/20 transition-colors">
+                     <div className="flex flex-col p-6 bg-card rounded-2xl border hover:shadow-lg transition-all duration-300">
                         <div className="text-primary mb-4">★★★★★</div>
                         <p className="text-muted-foreground mb-6 italic">
                             "Lo mejor es poder ver las ventas desde mi casa. Mis empleados lo usan sin problemas porque es muy fácil."
@@ -228,7 +228,7 @@ export default function LandingPage() {
                         </div>
                      </div>
                      {/* Testimonial 3 */}
-                     <div className="flex flex-col p-6 bg-muted/20 rounded-2xl border hover:border-primary/20 transition-colors">
+                     <div className="flex flex-col p-6 bg-card rounded-2xl border hover:shadow-lg transition-all duration-300">
                         <div className="text-primary mb-4">★★★★★</div>
                         <p className="text-muted-foreground mb-6 italic">
                             "Probé varios sistemas y todos eran complicados. Este fue registrarme y empezar a vender."
