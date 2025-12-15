@@ -13,6 +13,7 @@ import { BarcodeScanner } from "@/components/inventory/barcode-scanner"
 import { toast } from "sonner"
 import { supabase } from "@/utils/supabase/client"
 import { useCreateSale } from "@/hooks/use-create-sale"
+import { useKiosk } from "@/components/providers/kiosk-provider"
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner"
 
 interface PosContainerProps {
@@ -26,21 +27,17 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
   const [showScanner, setShowScanner] = useState(false)
   const [showCheckout, setShowCheckout] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
-  const [kioskId, setKioskId] = useState<string | null>(null)
-  const searchInputRef = useRef<HTMLInputElement>(null)
+  // Use global context for consistency
+  const { currentKiosk } = useKiosk()
+  const [userId, setUserId] = useState<string | null>(null)
+
+  // Sync kioskId with context
+  const kioskId = currentKiosk?.id || null
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
         if (data.user) {
             setUserId(data.user.id)
-            // Fetch kiosk associated with user
-            supabase.from('kiosk_members')
-                .select('kiosk_id')
-                .eq('user_id', data.user.id)
-                .maybeSingle()
-                .then(({ data: member }) => {
-                    if (member) setKioskId(member.kiosk_id)
-                })
         }
     })
   }, [])
