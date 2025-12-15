@@ -21,6 +21,7 @@ interface PosContainerProps {
 }
 
 export function PosContainer({ initialProducts }: PosContainerProps) {
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [cart, setCart] = useState<CartItem[]>([])
@@ -29,7 +30,6 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
   const [userId, setUserId] = useState<string | null>(null)
   // Use global context for consistency
   const { currentKiosk } = useKiosk()
-  const [userId, setUserId] = useState<string | null>(null)
 
   // Sync kioskId with context
   const kioskId = currentKiosk?.id || null
