@@ -27,7 +27,24 @@ export function KioskProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient()
 
     useEffect(() => {
-        refreshKiosks()
+        const init = async () => {
+            await refreshKiosks()
+        }
+        init()
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                refreshKiosks()
+            }
+            if (event === 'SIGNED_OUT') {
+                setCurrentKiosk(null)
+                setAllKiosks([])
+            }
+        })
+
+        return () => {
+            subscription.unsubscribe()
+        }
     }, [])
 
     async function refreshKiosks() {
