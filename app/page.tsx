@@ -282,17 +282,84 @@ export default function LandingPage() {
 
         {/* Pricing CTA */}
         <section id="pricing" className="w-full py-16 md:py-24 px-4 bg-background">
-            <div className="container mx-auto text-center">
-                <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-3xl p-8 md:p-16 border border-primary/10 hover:border-primary/20 transition-colors">
-                    <h2 className="text-3xl font-bold tracking-tighter md:text-4xl mb-6">Empieza hoy mismo</h2>
-                    <p className="mb-8 text-lg text-muted-foreground max-w-2xl mx-auto">
-                        Únete a cientos de kiosqueros que ya modernizaron su negocio. Sin tarjeta de crédito requerida.
+            <div className="container mx-auto px-4">
+                <div className="text-center mb-16">
+                    <h2 className="text-3xl font-bold tracking-tighter md:text-4xl mb-4">Planes para cada etapa</h2>
+                    <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                        Comienza gratis y mejora a medida que tu negocio crece.
                     </p>
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <Link href="/login">
-                            <Button size="lg" className="h-12 px-8 text-lg rounded-full shadow-lg hover:shadow-primary/25">
-                                Crear Cuenta Gratis
-                            </Button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                    {/* Free Plan */}
+                    <div className="flex flex-col p-6 bg-card rounded-2xl border shadow-sm hover:shadow-md transition-shadow">
+                        <div className="mb-4">
+                            <h3 className="text-2xl font-bold">Gratis</h3>
+                            <p className="text-muted-foreground">Para empezar</p>
+                        </div>
+                        <div className="mb-6">
+                            <span className="text-4xl font-bold">$0</span>
+                            <span className="text-muted-foreground">/mes</span>
+                        </div>
+                        <ul className="space-y-3 mb-8 flex-1">
+                            <li className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4 text-green-500" /> Hasta 50 productos</li>
+                            <li className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4 text-green-500" /> 1 Kiosco</li>
+                            <li className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4 text-green-500" /> Ventas ILIMITADAS</li>
+                            <li className="flex items-center gap-2 text-sm text-muted-foreground"><Lock className="h-3 w-3" /> Reportes Básicos</li>
+                        </ul>
+                        <Link href="/login" className="w-full">
+                            <Button variant="outline" className="w-full rounded-full" size="lg">Comenzar Gratis</Button>
+                        </Link>
+                    </div>
+
+                    {/* Pro Plan */}
+                    <div className="flex flex-col p-6 bg-card rounded-2xl border-2 border-primary shadow-xl relative scale-105 z-10">
+                        <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-bl-xl rounded-tr-xl">
+                            MÁS POPULAR
+                        </div>
+                        <div className="mb-4">
+                            <h3 className="text-2xl font-bold text-primary">Pro</h3>
+                            <p className="text-muted-foreground">Para crecer en serio</p>
+                        </div>
+                        <div className="mb-6">
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-4xl font-bold">$18.000</span>
+                                <span className="text-muted-foreground">/mes</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1 text-green-600 font-medium">Primer mes 50% OFF</p>
+                        </div>
+                        <ul className="space-y-3 mb-8 flex-1">
+                            <li className="flex items-center gap-2 text-sm font-medium"><CheckCircle2 className="h-5 w-5 text-primary" /> Productos ILIMITADOS</li>
+                            <li className="flex items-center gap-2 text-sm font-medium"><CheckCircle2 className="h-5 w-5 text-primary" /> Hasta 2 Kioscos</li>
+                            <li className="flex items-center gap-2 text-sm font-medium"><CheckCircle2 className="h-5 w-5 text-primary" /> Reportes</li>
+                            <li className="flex items-center gap-2 text-sm font-medium"><CheckCircle2 className="h-5 w-5 text-primary" /> Control de Caja Completo</li>
+                            <li className="flex items-center gap-2 text-sm font-medium"><CheckCircle2 className="h-5 w-5 text-primary" /> Soporte</li>
+                        </ul>
+                        <Link href="/login" className="w-full">
+                            <Button className="w-full rounded-full shadow-lg hover:shadow-primary/25" size="lg">Probar Pro Gratis</Button>
+                        </Link>
+                    </div>
+
+                    {/* Enterprise Plan */}
+                    <div className="flex flex-col p-6 bg-card rounded-2xl border shadow-sm hover:shadow-md transition-shadow">
+                        <div className="mb-4">
+                            <h3 className="text-2xl font-bold">Enterprise</h3>
+                            <p className="text-muted-foreground">Grandes redes</p>
+                        </div>
+                        <div className="mb-6">
+                            <span className="text-4xl font-bold">$55.000</span>
+                            <span className="text-muted-foreground">/mes</span>
+                        </div>
+                        <ul className="space-y-3 mb-8 flex-1">
+                            <li className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4 text-green-500" /> Kioscos ILIMITADOS</li>
+                            <li className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4 text-green-500" /> Usuarios ILIMITADOS</li>
+                            <li className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4 text-green-500" /> Productos ILIMITADOS</li>
+                            <li className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4 text-green-500" /> Reportes Avanzados</li>
+                            <li className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4 text-green-500" /> Soporte Prioritario</li>
+                            <li className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4 text-green-500" /> Dashboards a Medida</li>
+                        </ul>
+                        <Link href="/login" className="w-full">
+                            <Button variant="outline" className="w-full rounded-full" size="lg">Contactar Ventas</Button>
                         </Link>
                     </div>
                 </div>

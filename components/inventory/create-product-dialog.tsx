@@ -38,6 +38,10 @@ import { Input } from "@/components/ui/input"
 import { supabase } from "@/utils/supabase/client"
 import { useRouter } from "next/navigation"
 import { useKiosk } from "@/components/providers/kiosk-provider"
+import { useSubscription } from "@/hooks/use-subscription"
+import { AlertCircle } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import Link from "next/link"
 
 // ... existing code
 
@@ -80,7 +84,34 @@ export function CreateProductDialog({
   const [showScanner, setShowScanner] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
+  const { plan, isPro } = useSubscription()
+  const [productCount, setProductCount] = useState(0)
+  const [limitReached, setLimitReached] = useState(false)
   const router = useRouter()
+  
+  useEffect(() => {
+    async function checkLimit() {
+        if (!currentKiosk || isPro) {
+            setLimitReached(false)
+            return
+        }
+        
+        const { count } = await supabase
+            .from('products')
+            .select('*', { count: 'exact', head: true })
+            .eq('kiosk_id', currentKiosk.id)
+            
+        setProductCount(count || 0)
+        
+        if (plan === 'free' && (count || 0) >= 50) {
+            setLimitReached(true)
+        } else {
+            setLimitReached(false)
+        }
+    }
+    
+    if (open) checkLimit()
+  }, [open, currentKiosk, isPro, plan])
   
   useEffect(() => {
     if (open && productToEdit) {
@@ -229,6 +260,24 @@ export function CreateProductDialog({
         <DialogHeader>
           <DialogTitle>{productToEdit ? "Editar Producto" : "Crear Nuevo Producto"}</DialogTitle>
         </DialogHeader>
+        
+        {!productToEdit && limitReached ? (
+            <div className="space-y-4 py-4">
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Límite Alcanzado</AlertTitle>
+                    <AlertDescription>
+                        Los planes gratuitos solo permiten hasta 50 productos.
+                    </AlertDescription>
+                </Alert>
+                <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setOpen && setOpen(false)}>Cancelar</Button>
+                    <Link href="/settings">
+                        <Button>Mejorar Plan</Button>
+                    </Link>
+                </div>
+            </div>
+        ) : (
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -399,6 +448,7 @@ export function CreateProductDialog({
             </DialogFooter>
           </form>
         </Form>
+        )}
         {showScanner && (
           <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
             <div className="w-full max-w-md">

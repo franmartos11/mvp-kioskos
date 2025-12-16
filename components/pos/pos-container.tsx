@@ -15,6 +15,9 @@ import { supabase } from "@/utils/supabase/client"
 import { useCreateSale } from "@/hooks/use-create-sale"
 import { useKiosk } from "@/components/providers/kiosk-provider"
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner"
+import { useSubscription } from "@/hooks/use-subscription"
+import { AlertTriangle, Lock } from "lucide-react"
+import Link from "next/link"
 
 interface PosContainerProps {
   initialProducts: Product[]
@@ -33,6 +36,37 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
 
   // Sync kioskId with context
   const kioskId = currentKiosk?.id || null
+  
+  const { plan, isPro } = useSubscription()
+  const [isOverLimit, setIsOverLimit] = useState(false)
+  const [isLoadingLimit, setIsLoadingLimit] = useState(true)
+
+  useEffect(() => {
+    async function checkLimit() {
+        if (!kioskId) return
+        
+        // Skip check for Pro users
+        if (isPro) {
+            setIsOverLimit(false)
+            setIsLoadingLimit(false)
+            return
+        }
+
+        const { count } = await supabase
+            .from('products')
+            .select('*', { count: 'exact', head: true })
+            .eq('kiosk_id', kioskId)
+        
+        if (plan === 'free' && (count || 0) > 50) {
+            setIsOverLimit(true)
+        } else {
+            setIsOverLimit(false)
+        }
+        setIsLoadingLimit(false)
+    }
+
+    checkLimit()
+  }, [kioskId, isPro, plan])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -178,6 +212,37 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
             // Toast error is handled in hook
         }
     })
+  }
+
+  if (isLoadingLimit) {
+      return <div className="flex items-center justify-center h-full">Cargando...</div>
+  }
+
+  if (isOverLimit) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full p-8 text-center space-y-6">
+            <div className="h-24 w-24 bg-destructive/10 rounded-full flex items-center justify-center">
+                <Lock className="h-12 w-12 text-destructive" />
+            </div>
+            <div className="max-w-md space-y-2">
+                <h1 className="text-2xl font-bold">Límite de Productos Excedido</h1>
+                <p className="text-muted-foreground">
+                    Tu plan actual (Free) permite hasta 50 productos. Actualmente tienes más de 50.
+                </p>
+                <p className="text-sm font-medium bg-secondary/50 p-4 rounded-lg">
+                    Para continuar vendiendo, debes eliminar productos o mejorar tu plan a PRO.
+                </p>
+            </div>
+            <div className="flex gap-4">
+                <Link href="/inventory">
+                    <Button variant="outline">Gestionar Productos</Button>
+                </Link>
+                <Link href="/settings">
+                    <Button>Mejorar a PRO</Button>
+                </Link>
+            </div>
+        </div>
+      )
   }
 
   return (

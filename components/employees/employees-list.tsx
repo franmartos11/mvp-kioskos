@@ -9,6 +9,7 @@ import { Phone, Mail } from "lucide-react"
 import { useKiosk } from "@/components/providers/kiosk-provider"
 import { cn } from "@/lib/utils"
 
+
 // Update interface to accept ui_key if id is potentially missing
 interface Employee {
     id?: string // Making optional as fetch might not have details yet

@@ -145,12 +145,6 @@ interface CloseShiftDialogProps {
 export function CloseShiftDialog({ sessionId, kioskId, initialCash, openedAt, onSuccess }: CloseShiftDialogProps) {
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
-    const [calculating, setCalculating] = useState(false)
-    const [stats, setStats] = useState({
-        salesCash: 0,
-        salesOther: 0,
-        expectedCash: 0
-    })
 
     const form = useForm<z.infer<typeof closeShiftSchema>>({
         resolver: zodResolver(closeShiftSchema) as any,
@@ -160,72 +154,28 @@ export function CloseShiftDialog({ sessionId, kioskId, initialCash, openedAt, on
         },
     })
 
-    // Calculate totals when dialog opens
-    useEffect(() => {
-        if (open) {
-            calculateTotals()
-        }
-    }, [open])
-
-    async function calculateTotals() {
-        setCalculating(true)
-        // Fetch sales since openedAt
-        const { data: sales } = await supabase
-            .from('sales')
-            .select('total, payment_method')
-            .eq('kiosk_id', kioskId)
-            .gte('created_at', openedAt)
-        
-        const salesCash = sales 
-            ? sales.filter(s => s.payment_method === 'cash').reduce((acc, s) => acc + s.total, 0)
-            : 0
-        
-        const salesOther = sales
-            ? sales.filter(s => s.payment_method !== 'cash').reduce((acc, s) => acc + s.total, 0)
-            : 0
-
-        const expectedCash = initialCash + salesCash
-        // TODO: Subtract withdrawals if we implement that feature
-
-        setStats({
-            salesCash,
-            salesOther,
-            expectedCash
-        })
-        setCalculating(false)
-    }
-
     async function onSubmit(values: z.infer<typeof closeShiftSchema>) {
         setLoading(true)
         try {
-            const difference = values.final_cash - stats.expectedCash
-
-            const { error } = await supabase
-                .from('cash_sessions')
-                .update({
-                    closed_at: new Date().toISOString(),
-                    final_cash: values.final_cash,
-                    expected_cash: stats.expectedCash,
-                    difference: difference,
-                    notes: values.notes,
-                    status: 'closed'
-                })
-                .eq('id', sessionId)
+            // Using RPC
+            const { error } = await supabase.rpc('close_shift', {
+                p_shift_id: sessionId,
+                p_final_cash: values.final_cash,
+                p_notes: values.notes
+            })
 
             if (error) throw error
 
-            toast.success("Caja cerrada correctamente")
+            toast.success("Caja cerrada correctamente. Revise el reporte para ver diferencias.")
             setOpen(false)
             onSuccess()
-        } catch (error) {
+        } catch (error: any) {
             console.error(error)
-            toast.error("Error al cerrar caja")
+            toast.error("Error al cerrar caja: " + error.message)
         } finally {
             setLoading(false)
         }
     }
-
-    const currentDiff = (form.watch('final_cash') || 0) - stats.expectedCash
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -242,97 +192,60 @@ export function CloseShiftDialog({ sessionId, kioskId, initialCash, openedAt, on
                     </DialogDescription>
                 </DialogHeader>
 
-                {calculating ? (
-                    <div className="flex justify-center p-4">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    </div>
-                ) : (
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div className="flex flex-col gap-1 p-3 bg-muted/50 rounded-md">
-                                <span className="text-muted-foreground">Efectivo Inicial</span>
-                                <span className="font-bold text-lg">${initialCash}</span>
-                            </div>
-                            <div className="flex flex-col gap-1 p-3 bg-muted/50 rounded-md">
-                                <span className="text-muted-foreground">Ventas Efectivo</span>
-                                <span className="font-bold text-lg text-green-600">+${stats.salesCash}</span>
-                            </div>
-                            <div className="flex flex-col gap-1 p-3 bg-muted/50 rounded-md">
-                                <span className="text-muted-foreground">Ventas Otros Medios</span>
-                                <span className="font-bold text-lg text-blue-600">${stats.salesOther}</span>
-                            </div>
-                            <div className="flex flex-col gap-1 p-3 bg-primary/10 rounded-md border border-primary/20">
-                                <span className="text-primary font-medium">Esperado en Caja</span>
-                                <span className="font-bold text-lg">${stats.expectedCash}</span>
-                            </div>
-                        </div>
+                <div className="grid gap-4 py-4">
+                    <Alert className="bg-muted/50 border-none">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Cierre Ciego</AlertTitle>
+                        <AlertDescription>
+                            Por seguridad, no se muestra el saldo esperado. Por favor cuenta todo el efectivo en caja.
+                        </AlertDescription>
+                    </Alert>
 
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                                <FormField
-                                    control={form.control}
-                                    name="final_cash"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Efectivo Real (Contado)</FormLabel>
-                                            <FormControl>
-                                                <div className="relative">
-                                                     <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                                    <Input 
-                                                        type="number" 
-                                                        step="0.01" 
-                                                        className="pl-9 text-lg font-bold" 
-                                                        {...field} 
-                                                    />
-                                                </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                
-                                <div className="flex items-center justify-between p-3 rounded-md border">
-                                    <span className="text-sm font-medium">Diferencia</span>
-                                    <span className={cn(
-                                        "font-bold",
-                                        currentDiff === 0 ? "text-green-600" :
-                                        currentDiff > 0 ? "text-blue-600" : "text-red-600"
-                                    )}>
-                                        {currentDiff > 0 ? "+" : ""}{currentDiff}
-                                    </span>
-                                </div>
-                                {currentDiff !== 0 && (
-                                    <Alert variant="destructive" className="py-2">
-                                        <AlertCircle className="h-4 w-4" />
-                                        <AlertTitle className="text-sm">Atención: Hay diferencias</AlertTitle>
-                                        <AlertDescription className="text-xs">
-                                            Por favor verifica el conteo. Si es correcto, explica la diferencia en notas.
-                                        </AlertDescription>
-                                    </Alert>
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                            <FormField
+                                control={form.control}
+                                name="final_cash"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Efectivo Real (Contado)</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                    <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                <Input 
+                                                    type="number" 
+                                                    step="0.01" 
+                                                    className="pl-9 text-lg font-bold" 
+                                                    {...field} 
+                                                />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
                                 )}
-
-                                <FormField
-                                    control={form.control}
-                                    name="notes"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Notas</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="Comentarios sobre el cierre..." {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <DialogFooter>
-                                    <Button type="submit" disabled={loading} className="w-full">
-                                        {loading ? "Cerrando..." : "Cerrar Turno"}
-                                    </Button>
-                                </DialogFooter>
-                            </form>
-                        </Form>
-                    </div>
-                )}
+                            />
+                            
+                            <FormField
+                                control={form.control}
+                                name="notes"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Notas</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Comentarios sobre el cierre..." {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <DialogFooter>
+                                <Button type="submit" disabled={loading} className="w-full">
+                                    {loading ? "Cerrando..." : "Cerrar Turno"}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </div>
             </DialogContent>
         </Dialog>
     )

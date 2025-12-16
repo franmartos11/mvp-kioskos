@@ -20,71 +20,28 @@ export function useDashboardStats({ userId, from, to }: DashboardStatsParams, in
             endDate = to || from
         }
 
-        // Call v2 stats which includes expenses
-        const { data, error } = await supabase.rpc('get_dashboard_stats_v2', {
+        // Call v3 stats which includes expenses and new metrics
+        const { data, error } = await supabase.rpc('get_dashboard_stats_v3', {
             p_user_id: userId,
             p_start_date: startDate.toISOString(),
             p_end_date: endDate.toISOString()
         })
 
         if (error || !data) {
-            console.warn("RPC failed, falling back to client-side calculation", error)
-            
-            // Fallback: Fetch manually
-            const [salesRes, expensesRes] = await Promise.all([
-                supabase.from('sales').select('total, created_at, kiosk_id, kiosks(name)')
-                    .gte('created_at', startDate.toISOString())
-                    .lte('created_at', endDate.toISOString())
-                ,
-                supabase.from('expenses').select('amount, date')
-                    .gte('date', startDate.toISOString())
-                    .lte('date', endDate.toISOString())
-            ])
-
-            if (salesRes.error || expensesRes.error) {
-                throw new Error("Fallback fetch failed")
-            }
-
-            const sales = salesRes.data || []
-            const expenses = expensesRes.data || []
-
-            const totalSales = sales.length
-            const totalRevenue = sales.reduce((acc, s) => acc + s.total, 0)
-            const totalExpenses = expenses.reduce((acc, e) => acc + e.amount, 0)
-            const grossProfit = totalRevenue // Fallback assumption
-            const netIncome = totalRevenue - totalExpenses
-
-            // Calculate Top Kiosk
-            const kioskMap = new Map<string, number>()
-            sales.forEach(s => {
-                // @ts-ignore
-                const name = s.kiosks?.name || 'Unknown'
-                kioskMap.set(name, (kioskMap.get(name) || 0) + s.total)
-            })
-            let topKiosk = "N/A"
-            if (kioskMap.size > 0) {
-                 topKiosk = [...kioskMap.entries()].reduce((a, b) => b[1] > a[1] ? b : a)[0]
-            }
-
-            const trendMap = new Map<string, number>()
-            sales.forEach(s => {
-                const d = format(new Date(s.created_at), 'dd/MM')
-                trendMap.set(d, (trendMap.get(d) || 0) + s.total)
-            })
-            const trend = Array.from(trendMap.entries()).map(([date, amount]) => ({ date, amount }))
-                .sort((a,b) => a.date.localeCompare(b.date))
-
-            const pie = Array.from(kioskMap.entries()).map(([name, value]) => ({ name, value }))
-
+            console.warn("RPC v3 failed", error)
+            // Return safe empty defaults if RPC fails
             return {
-                totalRevenue,
-                totalSales,
-                totalExpenses,
-                grossProfit,
-                netIncome,
-                topKiosk,
-                trend,
-                pie
+                totalRevenue: 0,
+                totalSales: 0,
+                totalExpenses: 0,
+                grossProfit: 0,
+                netIncome: 0,
+                ticketAvg: 0,
+                margin: 0,
+                trend: [],
+                pie: [],
+                topProducts: [],
+                stockAlerts: 0
             }
         }
 
@@ -96,14 +53,17 @@ export function useDashboardStats({ userId, from, to }: DashboardStatsParams, in
         }))
 
         return {
-            totalRevenue: data.totalRevenue,
-            totalSales: data.totalSales,
-            totalExpenses: data.totalExpenses,
-            grossProfit: data.grossProfit,
-            netIncome: data.netIncome,
-            topKiosk: data.topKiosk,
+            totalRevenue: Number(data.totalRevenue) || 0,
+            totalSales: Number(data.totalSales) || 0,
+            totalExpenses: Number(data.totalExpenses) || 0,
+            grossProfit: Number(data.grossProfit) || 0,
+            netIncome: Number(data.netIncome) || 0,
+            ticketAvg: Number(data.ticketAvg) || 0,
+            margin: Number(data.margin) || 0,
             trend,
-            pie: data.pie || []
+            pie: data.pie || [],
+            topProducts: data.topProducts || [],
+            stockAlerts: Number(data.stockAlerts) || 0
         }
     },
     initialData: initialData,

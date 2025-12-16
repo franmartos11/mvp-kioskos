@@ -47,6 +47,7 @@ export function LoginForm() {
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input
+          name="email"
           id="email"
           type="email"
           placeholder="tu@email.com"
@@ -58,6 +59,7 @@ export function LoginForm() {
       <div className="space-y-2">
         <Label htmlFor="password">Contraseña</Label>
         <Input
+          name="password"
           id="password"
           type="password"
           value={password}

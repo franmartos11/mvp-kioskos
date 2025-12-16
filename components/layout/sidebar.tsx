@@ -15,8 +15,8 @@ const navItems = [
   { href: "/inventory", label: "Inventario", icon: Package },
   { href: "/suppliers", label: "Proveedores", icon: Truck },
   { href: "/sales", label: "Ventas", icon: DollarSign },
-  { href: "/cash", label: "Caja", icon: Wallet },
-  { href: "/expenses", label: "Gastos", icon: TrendingDown },
+  { href: "/finance/cash-register", label: "Caja", icon: Receipt },
+  { href: "/finance", label: "Finanzas", icon: Wallet },
   { href: "/employees", label: "Empleados", icon: Users },
   { href: "/settings", label: "Configuración", icon: Settings },
 ]
@@ -26,6 +26,13 @@ export function MainNav({ className, ...props }: React.HTMLAttributes<HTMLElemen
   const { currentKiosk } = useKiosk()
   
   const isOwner = currentKiosk?.role === 'owner'
+  // Default permissions if null (e.g. loading or error)
+  const p = currentKiosk?.permissions || {
+      view_dashboard: false,
+      view_finance: false,
+      manage_members: false,
+      view_reports: false
+  }
 
   return (
     <nav
@@ -33,15 +40,26 @@ export function MainNav({ className, ...props }: React.HTMLAttributes<HTMLElemen
       {...props}
     >
       {navItems.map((item) => {
-        // Hide Settings if not owner
-        if (item.href === "/settings" && !isOwner) {
-            return null
-        }
+        // PERMISSION CHECKS
+        
+        // 1. Settings: Strict Owner (Billing, Kiosk deletion, etc)
+        if (item.href === "/settings" && !isOwner) return null
 
-        // Hide Dashboard if not owner
-        if (item.href === "/dashboard" && !isOwner) {
-            return null
-        }
+        // 2. Dashboard
+        if (item.href === "/dashboard" && !p.view_dashboard) return null
+
+        // 3. Finance
+        if (item.href === "/finance" && !p.view_finance) return null
+        
+        // 4. Employees
+        if (item.href === "/employees" && !p.manage_members) return null
+
+        // 5. Sales (History) - maybe linked to Finance or new permission?
+        // For now, let's link it to view_reports or view_finance
+        if (item.href === "/sales" && !p.view_finance) return null
+        
+        // 6. Cash Register
+        if (item.href === "/finance/cash-register" && !p.view_finance) return null
 
         const Icon = item.icon
         const isActive = pathname === item.href

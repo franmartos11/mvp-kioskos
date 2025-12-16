@@ -11,6 +11,10 @@ import { toast } from "sonner"
 import { Loader2, UserPlus, Search } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useKiosk } from "@/components/providers/kiosk-provider"
+import { useSubscription } from "@/hooks/use-subscription"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import Link from "next/link"
+import { ShieldAlert } from "lucide-react"
 
 interface Kiosk {
   id: string
@@ -24,11 +28,7 @@ interface InviteSellerDialogProps {
 
 export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps) {
   const { currentKiosk } = useKiosk()
-
-  if (!currentKiosk || currentKiosk.role !== 'owner') {
-      return null
-  }
-
+  
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   
@@ -37,7 +37,61 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
   const [hourlyRate, setHourlyRate] = useState("")
   const [foundUser, setFoundUser] = useState<any>(null)
 
+  const { plan, isEnterprise } = useSubscription()
+  const [employeeCount, setEmployeeCount] = useState(0)
+  const [limitReached, setLimitReached] = useState(false)
+
+  // Check limits
   const router = useRouter()
+
+  if (!currentKiosk || currentKiosk.role !== 'owner') {
+      return null
+  }
+
+  // Fetch count when opening
+  // We can use a simple effect.
+  // Note: Open state is local, so we depend on `open` if we had access, but here open is inside component?
+  // Ah, `open` is state.
+  
+  // We need to fetch count of sellers for this user/kiosk owner.
+  // The 'kiosks' prop contains all kiosks where user is owner.
+  // So we count members in these kiosks.
+  
+  // Wait, useEffect should run when dialog opens. 
+  // Let's rely on checking when the component mounts or when `open` changes.
+  
+  const checkLimit = async () => {
+    if (isEnterprise) return // Unlimited
+
+    // Fetch all members with role 'seller' in my kiosks
+    const kioskIds = kiosks.map(k => k.id)
+    if (kioskIds.length === 0) return
+
+    const { count } = await supabase
+        .from('kiosk_members')
+        .select('*', { count: 'exact', head: true })
+        .in('kiosk_id', kioskIds)
+        .eq('role', 'seller')
+    
+    setEmployeeCount(count || 0)
+
+    const limit = plan === 'free' ? 0 : 2 // Free: 0, Pro: 2
+    
+    if ((count || 0) >= limit) {
+        setLimitReached(true)
+    } else {
+        setLimitReached(false)
+    }
+  }
+  
+  // Monitor open state changes? or just fetch once?
+  // Ideally we use text of button to show "Limit Reached" or disable it?
+  // Or show Alert inside content.
+  
+  // Since `open` is controlled locally, we can hook into onOpenChange or just run effect.
+  if (open && !limitReached && !isEnterprise) {
+      checkLimit()
+  }
 
   const handleSearch = async () => {
     if (!email) return
@@ -128,6 +182,25 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
         <DialogHeader>
           <DialogTitle>Agregar Vendedor / Empleado</DialogTitle>
         </DialogHeader>
+
+        {limitReached && !isEnterprise ? (
+             <div className="space-y-4 py-4">
+                <Alert variant="destructive">
+                    <ShieldAlert className="h-4 w-4" />
+                    <AlertTitle>Límite de Empleados Alcanzado</AlertTitle>
+                    <AlertDescription>
+                        Tu plan actual ({plan}) permite {plan === 'free' ? '0' : '2'} empleados.
+                        Tienes {employeeCount} registrados.
+                    </AlertDescription>
+                </Alert>
+                <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+                    <Link href="/settings">
+                        <Button>Mejorar Plan</Button>
+                    </Link>
+                </div>
+            </div>
+        ) : (
         <div className="space-y-4">
             <div className="space-y-2">
                 <Label>Kiosco</Label>
@@ -180,6 +253,7 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
                 Confirmar y Agregar
             </Button>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   )

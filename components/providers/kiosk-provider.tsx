@@ -4,10 +4,21 @@ import { createContext, useContext, useEffect, useState } from "react"
 import { createClient } from "@/utils/supabase/client"
 import { Loader2 } from "lucide-react"
 
-type Kiosk = {
+type KioskPermissions = {
+    view_dashboard: boolean
+    view_finance: boolean
+    manage_products: boolean
+    view_costs: boolean
+    manage_stock: boolean
+    manage_members: boolean
+    view_reports: boolean
+}
+
+export type Kiosk = {
     id: string
     name: string
     role: 'owner' | 'seller'
+    permissions: KioskPermissions
 }
 
 type KioskContextType = {
@@ -61,6 +72,7 @@ export function KioskProvider({ children }: { children: React.ReactNode }) {
             .from('kiosk_members')
             .select(`
                 role,
+                permissions,
                 kiosk:kiosks (
                     id,
                     name
@@ -72,23 +84,49 @@ export function KioskProvider({ children }: { children: React.ReactNode }) {
             const kiosks: Kiosk[] = members.map((m: any) => ({
                 id: m.kiosk.id,
                 name: m.kiosk.name,
-                role: m.role
+                role: m.role,
+                permissions: m.permissions || {} 
             }))
             
             setAllKiosks(kiosks)
 
+            // Determine plan limit
+            // We fetch subscription manually here to avoid complex hook interactions or circular deps
+            // (Since KioskProvider is high up, useSubscription might not be ready or we want direct DB access)
+            
+            let plan = 'free'
+            const { data: sub } = await supabase
+                .from('subscriptions')
+                .select('plan_id, status')
+                .eq('user_id', user.id)
+                .single()
+            
+            if (sub && sub.status === 'active') {
+                plan = sub.plan_id
+            }
+
+            let limit = 1
+            if (plan === 'pro') limit = 2
+            if (plan === 'enterprise') limit = 999
+
+            // Sort kiosks by name to match UI
+            const sortedKiosks = [...kiosks].sort((a, b) => a.name.localeCompare(b.name))
+
             // Determine which kiosk to select
-            if (kiosks.length > 0) {
+            if (sortedKiosks.length > 0) {
                 // 1. Try to restore from localStorage
                 const savedKioskId = localStorage.getItem('kiosk_id')
-                const found = kiosks.find(k => k.id === savedKioskId)
+                const foundIndex = sortedKiosks.findIndex(k => k.id === savedKioskId)
+                const found = sortedKiosks[foundIndex]
                 
+                // CHECK LOCK: Removed strict index limit on restore to avoid UX issues (resetting to first kiosk)
+                // If user is a member, they should be able to access it.
                 if (found) {
                     setCurrentKiosk(found)
                 } else {
                     // 2. Default to first one
-                    setCurrentKiosk(kiosks[0])
-                    localStorage.setItem('kiosk_id', kiosks[0].id)
+                    setCurrentKiosk(sortedKiosks[0])
+                    localStorage.setItem('kiosk_id', sortedKiosks[0].id)
                 }
             } else {
                 setCurrentKiosk(null)

@@ -9,12 +9,15 @@ import { DollarSign, Percent, ShoppingBag, Clock, TrendingUp } from "lucide-reac
 import { format, subDays, getHours } from "date-fns"
 import { es } from "date-fns/locale"
 
+import { DateRange } from "react-day-picker"
+
 interface KioskDetailViewProps {
     kioskId: string
     kioskName: string
+    dateRange?: DateRange
 }
 
-export function KioskDetailView({ kioskId, kioskName }: KioskDetailViewProps) {
+export function KioskDetailView({ kioskId, kioskName, dateRange }: KioskDetailViewProps) {
     const [loading, setLoading] = useState(true)
     const [stats, setStats] = useState({
         revenue: 0,
@@ -29,8 +32,14 @@ export function KioskDetailView({ kioskId, kioskName }: KioskDetailViewProps) {
     useEffect(() => {
         async function fetchKioskData() {
             setLoading(true)
-            const endDate = new Date()
-            const startDate = subDays(endDate, 30)
+            
+            let startDate = subDays(new Date(), 30)
+            let endDate = new Date()
+
+            if (dateRange?.from) {
+                startDate = dateRange.from
+                endDate = dateRange.to || dateRange.from
+            }
 
             
             // Optimization: Use RPC for single round-trip fetching of complex details
@@ -68,7 +77,7 @@ export function KioskDetailView({ kioskId, kioskName }: KioskDetailViewProps) {
         if (kioskId) {
             fetchKioskData()
         }
-    }, [kioskId])
+    }, [kioskId, dateRange])
 
     const translatePayment = (method: string) => {
         const map: Record<string, string> = {
@@ -133,42 +142,50 @@ export function KioskDetailView({ kioskId, kioskName }: KioskDetailViewProps) {
             <h2 className="text-2xl font-bold tracking-tight">Detalles: {kioskName}</h2>
             
              <div className="grid gap-4 md:grid-cols-4">
-                <Card>
+                <Card className="border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-shadow">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Facturación</CardTitle>
-                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Facturación</CardTitle>
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+                            <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(stats.revenue)}</div>
+                        <div className="text-2xl font-bold text-foreground">{formatCurrency(stats.revenue)}</div>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="border-l-4 border-l-emerald-500 shadow-sm hover:shadow-md transition-shadow">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Ganancia Est.</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-emerald-600" />
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Ganancia Est.</CardTitle>
+                        <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-full">
+                            <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-emerald-600">{formatCurrency(stats.profit)}</div>
-                        <p className="text-xs text-muted-foreground">Margen: {stats.margin.toFixed(1)}%</p>
+                        <p className="text-xs text-muted-foreground mt-1">Margen: {stats.margin.toFixed(1)}%</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="border-l-4 border-l-purple-500 shadow-sm hover:shadow-md transition-shadow">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Ticket Promedio</CardTitle>
-                        <Percent className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Ticket Promedio</CardTitle>
+                        <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-full">
+                            <Percent className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                        </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(stats.ticketAvg)}</div>
+                        <div className="text-2xl font-bold text-foreground">{formatCurrency(stats.ticketAvg)}</div>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="border-l-4 border-l-orange-500 shadow-sm hover:shadow-md transition-shadow">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Prod. Vendidos</CardTitle>
-                        <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Prod. Vendidos</CardTitle>
+                        <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-full">
+                            <ShoppingBag className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                        </div>
                     </CardHeader>
                     <CardContent>
                          {/* Aggregating all quantity */}
-                        <div className="text-2xl font-bold">
+                        <div className="text-2xl font-bold text-foreground">
                             {topProducts.reduce((acc, curr) => acc + curr.quantity, 0)}
                         </div>
                     </CardContent>

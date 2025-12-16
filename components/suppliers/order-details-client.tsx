@@ -35,6 +35,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 import { useKiosk } from "@/components/providers/kiosk-provider"
 
@@ -88,7 +99,7 @@ export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
     }
 
     const handleReceiveStock = async () => {
-        if (!confirm("¿Confirmas que recibiste la mercadería? Esto aumentará el stock.")) return
+        // Confirmation handled by AlertDialog
         
         setReceiving(true)
         try {
@@ -132,17 +143,17 @@ export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
             const { data: { user } } = await supabase.auth.getUser()
              if (!user) throw new Error("No user")
 
-            // Get Kiosk
-            const { data: member } = await supabase.from('kiosk_members').select('kiosk_id').eq('user_id', user.id).single()
-            if (!member) throw new Error("No kiosk")
+            // Get Kiosk from context
+            if (!currentKiosk) throw new Error("No kiosk selected")
 
             // Determine Cash Session if paying from register
+            // Note: We use currentKiosk.id instead of member.kiosk_id
             let cashSessionId = null
             if (paymentMethod === 'cash_register') {
                 const { data: session } = await supabase
                     .from('cash_sessions')
                     .select('id')
-                    .eq('kiosk_id', member.kiosk_id)
+                    .eq('kiosk_id', currentKiosk.id)
                     .eq('status', 'open')
                     .single()
                 
@@ -158,11 +169,22 @@ export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
             // For now, assume table exists 'supplier_payments'
              await supabase.from('supplier_payments').insert({
                  order_id: orderId,
-                 kiosk_id: member.kiosk_id,
+                 kiosk_id: currentKiosk.id,
                  user_id: user.id,
                  amount: amount,
                  payment_method: paymentMethod,
                  cash_session_id: cashSessionId
+             })
+
+             // 2. Create Expense Record (for Cash Register & Dashboard)
+             await supabase.from('expenses').insert({
+                kiosk_id: currentKiosk.id,
+                user_id: user.id,
+                amount: amount,
+                description: `Pago a proveedor - Orden #${orderId.slice(0, 8)}`,
+                category: 'provider',
+                payment_method: paymentMethod,
+                date: new Date().toISOString()
              })
 
             // 2. Update Order Payment Status
@@ -280,10 +302,26 @@ export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
                                     <p className="text-sm text-muted-foreground">
                                         Confirma cuando la mercadería haya llegado físicamente. Esto actualizará el stock inmediatamente.
                                     </p>
-                                    <Button className="w-full" onClick={handleReceiveStock} disabled={receiving}>
-                                        {receiving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                        Confirmar Recepción
-                                    </Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button className="w-full" disabled={receiving}>
+                                                {receiving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                                Confirmar Recepción
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>¿Confirmar Recepción?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    Esta acción es irreversible. Se actualizará el stock de todos los productos incluidos en esta orden y se recalcularán los costos.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                <AlertDialogAction onClick={handleReceiveStock}>Confirmar</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
                                 </div>
                             ) : (
                                 <div className="p-3 bg-muted rounded-md flex items-center gap-2 text-sm text-muted-foreground">

@@ -24,6 +24,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts'
 
+import { useKiosk } from "@/components/providers/kiosk-provider"
+
 interface ProductDetailsDialogProps {
   product: Product | null
   open: boolean
@@ -32,6 +34,9 @@ interface ProductDetailsDialogProps {
 }
 
 export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpdated }: ProductDetailsDialogProps) {
+  const { currentKiosk } = useKiosk()
+  const p = currentKiosk?.permissions || { view_costs: false, manage_products: false } as any
+
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
@@ -193,7 +198,7 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
              <DialogTitle className="text-2xl font-bold">
                 {isEditing ? "Editar Producto" : product.name}
              </DialogTitle>
-             {!isEditing && (
+             {!isEditing && p.manage_products && (
                  <Button onClick={() => setIsEditing(true)}>
                     <Pencil className="h-4 w-4 mr-2" /> Editar
                  </Button>
@@ -297,12 +302,14 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="p-4 rounded-lg border">
-                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Costo Unitario</span>
-                                    <div className="text-xl font-semibold mt-1">
-                                        {product.cost ? `$${product.cost.toFixed(2)}` : '-'}
+                                {p.view_costs && (
+                                    <div className="p-4 rounded-lg border">
+                                        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Costo Unitario</span>
+                                        <div className="text-xl font-semibold mt-1">
+                                            {product.cost ? `$${product.cost.toFixed(2)}` : '-'}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                                 <div className="p-4 rounded-lg border">
                                     <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Stock Actual</span>
                                     <div className="flex items-center gap-2 mt-1">
@@ -377,17 +384,19 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
                             </div>
                         </CardContent>
                     </Card>
-                     <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Ganancia Estimada</CardTitle>
-                            <TrendingUp className="h-4 w-4 text-emerald-500" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-emerald-600">
-                                {stats ? `$${stats.estimatedProfit.toFixed(2)}` : "-"}
-                            </div>
-                        </CardContent>
-                    </Card>
+                    {p.view_costs && (
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Ganancia Estimada</CardTitle>
+                                <TrendingUp className="h-4 w-4 text-emerald-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-emerald-600">
+                                    {stats ? `$${stats.estimatedProfit.toFixed(2)}` : "-"}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
 
                 {/* Sales Chart */}

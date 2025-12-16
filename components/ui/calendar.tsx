@@ -42,6 +42,8 @@ function Calendar({
   showOutsideDays = true,
   classNames,
   initialFocus,
+  defaultMonth,
+  numberOfMonths,
   ...props
 }: CalendarProps) {
   // Internal navigation state

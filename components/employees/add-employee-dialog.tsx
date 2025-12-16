@@ -10,6 +10,10 @@ import { supabase } from "@/utils/supabase/client"
 import { toast } from "sonner"
 import { Loader2, Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useSubscription } from "@/hooks/use-subscription"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import Link from "next/link"
+import { ShieldAlert } from "lucide-react"
 
 interface Kiosk {
   id: string
@@ -34,6 +38,37 @@ export function AddEmployeeDialog({ kiosks, userId, onAdded }: AddEmployeeDialog
   const [kioskId, setKioskId] = useState(kiosks[0]?.id || "")
   
   const router = useRouter()
+  
+  const { plan, isEnterprise } = useSubscription()
+  const [employeeCount, setEmployeeCount] = useState(0)
+  const [limitReached, setLimitReached] = useState(false)
+
+  // Check limits when open
+  async function checkLimit() {
+    if (isEnterprise) return
+
+    const kioskIds = kiosks.map(k => k.id)
+    if (kioskIds.length === 0) return
+
+    // Count both real users (kiosk_members) and simple employees
+    // Actually, 'employees' table seems to track pay rates.
+    // If 'AddEmployeeDialog' inserts into `employees` table, we should count that table?
+    // Let's count `employees` table entries.
+    const { count } = await supabase
+        .from('employees')
+        .select('*', { count: 'exact', head: true })
+        .in('kiosk_id', kioskIds)
+    
+    setEmployeeCount(count || 0)
+
+    const limit = plan === 'free' ? 0 : 2
+    if ((count || 0) >= limit) setLimitReached(true)
+    else setLimitReached(false)
+  }
+
+  if (open && !limitReached && !isEnterprise) {
+      checkLimit()
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -91,6 +126,25 @@ export function AddEmployeeDialog({ kiosks, userId, onAdded }: AddEmployeeDialog
         <DialogHeader>
           <DialogTitle>Registrar Nuevo Empleado</DialogTitle>
         </DialogHeader>
+        
+        {limitReached && !isEnterprise ? (
+             <div className="space-y-4 py-4">
+                <Alert variant="destructive">
+                    <ShieldAlert className="h-4 w-4" />
+                    <AlertTitle>Límite de Empleados Alcanzado</AlertTitle>
+                    <AlertDescription>
+                        Tu plan actual ({plan}) permite {plan === 'free' ? '0' : '2'} empleados.
+                        Tienes {employeeCount} registrados.
+                    </AlertDescription>
+                </Alert>
+                <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+                    <Link href="/settings">
+                        <Button>Mejorar Plan</Button>
+                    </Link>
+                </div>
+            </div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
                 <Label htmlFor="kiosk">Kiosco</Label>
@@ -164,6 +218,7 @@ export function AddEmployeeDialog({ kiosks, userId, onAdded }: AddEmployeeDialog
                 Guardar Empleado
             </Button>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   )

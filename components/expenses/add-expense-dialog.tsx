@@ -21,6 +21,7 @@ export function AddExpenseDialog({ open, onOpenChange, kioskId, onSuccess }: Add
     const [amount, setAmount] = useState("")
     const [description, setDescription] = useState("")
     const [category, setCategory] = useState("other")
+    const [paymentMethod, setPaymentMethod] = useState("cash")
 
     const handleSave = async () => {
         if (!amount || !description) return
@@ -35,6 +36,7 @@ export function AddExpenseDialog({ open, onOpenChange, kioskId, onSuccess }: Add
                 amount: parseFloat(amount),
                 description: description,
                 category: category,
+                payment_method: paymentMethod,
                 date: new Date().toISOString()
             })
 
@@ -84,20 +86,38 @@ export function AddExpenseDialog({ open, onOpenChange, kioskId, onSuccess }: Add
                             onChange={(e) => setAmount(e.target.value)}
                         />
                     </div>
-                    <div className="grid gap-2">
-                        <Label>Categoría</Label>
-                        <Select value={category} onValueChange={setCategory}>
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="services">Servicios (Luz, Internet)</SelectItem>
-                                <SelectItem value="rent">Alquiler</SelectItem>
-                                <SelectItem value="salaries">Sueldos</SelectItem>
-                                <SelectItem value="inventory">Mercadería (Externo)</SelectItem>
-                                <SelectItem value="other">Otros</SelectItem>
-                            </SelectContent>
-                        </Select>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label>Categoría</Label>
+                            <Select value={category} onValueChange={setCategory}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="services">Servicios (Luz, Internet)</SelectItem>
+                                    <SelectItem value="rent">Alquiler</SelectItem>
+                                    <SelectItem value="salaries">Sueldos</SelectItem>
+                                    <SelectItem value="inventory">Mercadería</SelectItem>
+                                    <SelectItem value="provider">Proveedor</SelectItem>
+                                    <SelectItem value="withdrawal">Retiro</SelectItem>
+                                    <SelectItem value="other">Otros</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Medio de Pago</Label>
+                            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="cash">Efectivo</SelectItem>
+                                    <SelectItem value="transfer">Transferencia</SelectItem>
+                                    <SelectItem value="card">Tarjeta</SelectItem>
+                                    <SelectItem value="other">Otro</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </div>
 

@@ -134,15 +134,14 @@ export function NewOrderClient() {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error("No user")
 
-            // Get kiosk
-            const { data: member } = await supabase.from('kiosk_members').select('kiosk_id').eq('user_id', user.id).single()
-            if (!member) throw new Error("No kiosk")
+            // Get kiosk from context
+            if (!currentKiosk) throw new Error("No kiosk selected")
 
             // 1. Create Order (Pending)
             const { data: order, error: orderError } = await supabase
                 .from('supplier_orders')
                 .insert({
-                    kiosk_id: member.kiosk_id,
+                    kiosk_id: currentKiosk.id,
                     supplier_id: selectedSupplierId,
                     user_id: user.id,
                     total_amount: totalAmount,

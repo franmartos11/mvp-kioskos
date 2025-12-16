@@ -9,6 +9,7 @@ import { PosContainer } from "@/components/pos/pos-container"
 import { supabase } from "@/utils/supabase/client"
 import { Product } from "@/types/inventory"
 import { OpenShiftDialog, CloseShiftDialog } from "@/components/pos/cash-register-dialog"
+import { CashMovementsDialog } from "@/components/pos/cash-movements-dialog"
 import { useKiosk } from "@/components/providers/kiosk-provider"
 
 import { useProducts } from "@/hooks/use-products"
@@ -95,14 +96,23 @@ export default function PosPage() {
                             Abierto a las <span className="font-medium text-foreground">{format(new Date(session.opened_at), 'HH:mm')}</span>
                         </p>
                     </div>
-                 </div>
-                 <CloseShiftDialog 
-                    sessionId={session.id}
-                    kioskId={currentKiosk.id}
-                    initialCash={session.initial_cash}
-                    openedAt={session.opened_at}
-                    onSuccess={loadData}
-                 />
+                  </div>
+                  <div className="flex items-center gap-2">
+                        {userId && (
+                            <CashMovementsDialog 
+                                sessionId={session.id}
+                                kioskId={currentKiosk.id}
+                                userId={userId}
+                            />
+                        )}
+                        <CloseShiftDialog 
+                            sessionId={session.id}
+                            kioskId={currentKiosk.id}
+                            initialCash={session.initial_cash}
+                            openedAt={session.opened_at}
+                            onSuccess={loadData}
+                        />
+                  </div>
              </div>
              <div className="flex-1 overflow-hidden p-2">
                 <PosContainer initialProducts={products} />
