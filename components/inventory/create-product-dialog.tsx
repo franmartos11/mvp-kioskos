@@ -54,6 +54,7 @@ const productSchema = z.object({
   min_stock: z.coerce.number().int().min(0).optional().default(5),
   image_url: z.string().optional().nullable(),
   supplier_id: z.string().optional(),
+  category_id: z.string().optional(),
 })
 
 type ProductFormValues = z.infer<typeof productSchema>
@@ -124,6 +125,7 @@ export function CreateProductDialog({
             min_stock: productToEdit.min_stock || 5,
             image_url: productToEdit.image_url,
             supplier_id: productToEdit.supplier_id || "",
+            category_id: productToEdit.category_id || "",
         })
         setPreview(productToEdit.image_url)
     } else if (open && !productToEdit) {
@@ -136,6 +138,7 @@ export function CreateProductDialog({
             min_stock: 5,
             image_url: null,
             supplier_id: "",
+            category_id: "",
         })
         setPreview(null)
     }
@@ -153,17 +156,22 @@ export function CreateProductDialog({
       min_stock: 5,
       image_url: null,
       supplier_id: "",
+      category_id: "",
     },
   })
 
   const [suppliers, setSuppliers] = useState<{id: string, name: string}[]>([])
+  const [categories, setCategories] = useState<{id: string, name: string}[]>([])
 
   useEffect(() => {
-    async function getSuppliers() {
-       const { data } = await supabase.from('suppliers').select('id, name').order('name')
-       if (data) setSuppliers(data)
+    async function getData() {
+       const { data: supData } = await supabase.from('suppliers').select('id, name').order('name')
+       if (supData) setSuppliers(supData)
+       
+       const { data: catData } = await supabase.from('categories').select('id, name').order('name')
+       if (catData) setCategories(catData)
     }
-    if (open) getSuppliers()
+    if (open) getData()
   }, [open])
 
   async function onSubmit(values: z.infer<typeof productSchema>) {
@@ -182,6 +190,7 @@ export function CreateProductDialog({
           min_stock: values.min_stock,
           image_url: values.image_url || null,
           supplier_id: (values.supplier_id === "none" || !values.supplier_id) ? null : values.supplier_id,
+          category_id: (values.category_id === "none" || !values.category_id) ? null : values.category_id,
           kiosk_id: currentKiosk.id,
       }
 
@@ -413,12 +422,37 @@ export function CreateProductDialog({
               )}
             />
             </div>
+            <FormField
+              control={form.control}
+              name="category_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Categoría</FormLabel>
+                   <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar categoría" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Sin categoría</SelectItem>
+                      {categories.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
              <FormField
               control={form.control}
               name="supplier_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Proveedor</FormLabel>
+                  <FormLabel>Proveedor (Opcional)</FormLabel>
                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>

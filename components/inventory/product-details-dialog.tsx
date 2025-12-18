@@ -24,6 +24,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts'
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
 import { useKiosk } from "@/components/providers/kiosk-provider"
 
 interface ProductDetailsDialogProps {
@@ -51,6 +59,21 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
   const [name, setName] = useState("")
   const [barcode, setBarcode] = useState("")
   const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [categoryId, setCategoryId] = useState<string>("")
+  const [categories, setCategories] = useState<{id: string, name: string}[]>([])
+
+  useEffect(() => {
+    async function getCategories() {
+       if (!currentKiosk?.id) return
+       const { data } = await supabase
+        .from('categories')
+        .select('id, name')
+        .eq('kiosk_id', currentKiosk.id)
+        .order('name')
+       if (data) setCategories(data)
+    }
+    getCategories()
+  }, [currentKiosk?.id])
 
   // Reset state when product changes or dialog opens
   useEffect(() => {
@@ -58,6 +81,7 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
       setName(product.name)
       setBarcode(product.barcode || "")
       setImageUrl(product.image_url)
+      setCategoryId(product.category_id || "none")
       
       if (open) {
           fetchStats(product.id, currentMonth)
@@ -142,7 +166,8 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
         .update({
           name,
           barcode: barcode || null,
-          image_url: imageUrl
+          image_url: imageUrl,
+          category_id: (categoryId === "none" || !categoryId) ? null : categoryId
         })
         .eq('id', product.id)
 
@@ -289,6 +314,21 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
                                     </Button>
                                 </div>
                             </div>
+                            
+                            <div className="space-y-2">
+                                <Label>Categoría</Label>
+                                <Select value={categoryId} onValueChange={setCategoryId}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Seleccionar Categoría" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">Sin Categoría</SelectItem>
+                                        {categories.map((cat) => (
+                                            <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                     ) : (
                         // VIEW MODE
@@ -342,6 +382,11 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
                                         <span className="font-mono text-xs bg-muted px-2 py-1 rounded">{product.supplier_id.substring(0, 8)}...</span>
                                     </div>
                                 )}
+                                
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">Categoría</span>
+                                    <Badge variant="outline">{product.category?.name || "Sin Categoría"}</Badge>
+                                </div>
                             </div>
                         </div>
                     )}

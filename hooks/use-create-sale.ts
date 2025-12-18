@@ -10,13 +10,14 @@ interface CreateSaleVariables {
   userId: string
   method: PaymentMethod
   customerName?: string
+  activePriceList?: { id: string, name: string } | null
 }
 
 export function useCreateSale() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ cart, kioskId, userId, method, customerName }: CreateSaleVariables) => {
+    mutationFn: async ({ cart, kioskId, userId, method, customerName, activePriceList }: CreateSaleVariables) => {
         // 1. Create Sale
         const total = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)
         
@@ -27,7 +28,8 @@ export function useCreateSale() {
                 payment_method: method,
                 kiosk_id: kioskId,
                 user_id: userId,
-                customer_name: customerName || null
+                customer_name: customerName || null,
+                metadata: activePriceList ? { price_list: activePriceList } : {}
             })
             .select()
             .single()

@@ -15,6 +15,7 @@ import { useProducts } from "@/hooks/use-products";
 import { supabase } from "@/utils/supabase/client";
 import { Product } from "@/types/inventory";
 import { CreateProductDialog } from "@/components/inventory/create-product-dialog";
+import { CategoriesManager } from "@/components/inventory/categories-manager";
 import { CsvActions } from "@/components/inventory/csv-actions";
 import { useState, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -39,6 +40,9 @@ import { StockAdjustmentDialog } from "@/components/inventory/stock-adjustment-d
 import { StockHistoryDialog } from "@/components/inventory/stock-history-dialog";
 import { AuditHistoryDialog } from "@/components/inventory/audit-history-dialog";
 import { useKiosk } from "@/components/providers/kiosk-provider";
+import { calculatePrice, PriceList } from "@/utils/pricing-engine";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// import { PriceSimulator } from "@/components/inventory/price-simulator"; // Removed as per user request
 
 // ... existing imports
 
@@ -56,6 +60,26 @@ export default function InventoryPage() {
     error,
     refetch 
   } = useProducts(currentKiosk?.id)
+
+  // Price List View State
+  const [priceLists, setPriceLists] = useState<PriceList[]>([])
+  const [viewLimitId, setViewLimitId] = useState<string>("base") // "base" or UUID
+  
+  useEffect(() => {
+    if (currentKiosk?.id) {
+        supabase
+            .from('price_lists')
+            .select('*')
+            .eq('kiosk_id', currentKiosk.id)
+            .eq('is_active', true)
+            .order('priority', { ascending: false })
+            .then(({ data }) => {
+                if (data) setPriceLists(data as any)
+            })
+    }
+  }, [currentKiosk?.id])
+
+  const selectedList = viewLimitId === "base" ? null : priceLists.find(l => l.id === viewLimitId) || null
 
   const isLoading = isQueryLoading || !currentKiosk
 
@@ -208,8 +232,13 @@ export default function InventoryPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Precios y Edición</DropdownMenuLabel>
+                      <DropdownMenuLabel>Gestión</DropdownMenuLabel>
                       <DropdownMenuSeparator />
+                        <div className="p-2">
+                           <CategoriesManager />
+                        </div>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel>Precios y Edición</DropdownMenuLabel>
                       <DropdownMenuItem onClick={() => setIsSelectionMode(!isSelectionMode)}>
                         <BoxSelect className="mr-2 h-4 w-4" /> 
                         {isSelectionMode ? "Desactivar Selección" : "Selección Manual"}
@@ -220,11 +249,6 @@ export default function InventoryPage() {
                       
                       <DropdownMenuSeparator />
                       <DropdownMenuLabel>Datos</DropdownMenuLabel>
-                      <DropdownMenuItem asChild>
-                          <div className="w-full cursor-default" onClick={(e) => e.stopPropagation()}>
-                             {/* Placeholder */}
-                          </div>
-                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setShowHistoryDialog(true)}>
                          <HistoryIcon className="mr-2 h-4 w-4" /> Historial de Precios
                       </DropdownMenuItem>
@@ -240,17 +264,33 @@ export default function InventoryPage() {
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
-           <div className="relative flex-1 max-w-sm">
-             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-             <Input
-               type="search"
-               placeholder="Buscar por nombre o código..."
-               className="pl-8"
-               value={searchTerm}
-               onChange={(e) => setSearchTerm(e.target.value)}
-             />
-           </div>
+        {/* View Controls Bar */}
+        <div className="flex flex-col sm:flex-row gap-4 items-center bg-muted/20 p-2 rounded-lg border">
+             <div className="flex items-center gap-2 flex-1 w-full">
+                <Search className="h-4 w-4 text-muted-foreground" />
+                <Input
+                   placeholder="Buscar..."
+                   className="h-8 border-none bg-transparent focus-visible:ring-0"
+                   value={searchTerm}
+                   onChange={(e) => setSearchTerm(e.target.value)}
+                />
+             </div>
+             
+             {/* Price List View Switcher */}
+             <div className="flex items-center gap-2 border-l pl-4">
+                 <span className="text-sm text-muted-foreground whitespace-nowrap">Ver Precios:</span>
+                 <Select value={viewLimitId} onValueChange={setViewLimitId}>
+                     <SelectTrigger className="h-8 w-[180px]">
+                         <SelectValue />
+                     </SelectTrigger>
+                     <SelectContent>
+                         <SelectItem value="base">Precio Base (Costo + Margen)</SelectItem>
+                         {priceLists.map(list => (
+                             <SelectItem key={list.id} value={list.id}>{list.name}</SelectItem>
+                         ))}
+                     </SelectContent>
+                 </Select>
+             </div>
         </div>
         
         <Card>
@@ -275,6 +315,7 @@ export default function InventoryPage() {
                 )}
                 <TableHead className="w-[80px]">Imagen</TableHead>
                 <TableHead>Nombre</TableHead>
+                <TableHead>Categoría</TableHead>
                 <TableHead>Código</TableHead>
                 <TableHead>Stock</TableHead>
                 {isOwner && <TableHead className="text-right">Costo</TableHead>}
@@ -286,14 +327,14 @@ export default function InventoryPage() {
               {isLoading ? (
                 // ... loading rows ...
                 <TableRow>
-                  <TableCell colSpan={isOwner ? 8 : 7} className="h-24 text-center">
+                  <TableCell colSpan={isOwner ? 9 : 8} className="h-24 text-center">
                     <RefreshCw className="animate-spin h-6 w-6 mx-auto mb-2" />
                     Cargando productos...
                   </TableCell>
                 </TableRow>
               ) : filteredProducts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={isOwner ? 8 : 7} className="h-24 text-center">
+                  <TableCell colSpan={isOwner ? 9 : 8} className="h-24 text-center">
                     No hay productos cargados o coincidencia.
                   </TableCell>
                 </TableRow>
@@ -333,6 +374,11 @@ export default function InventoryPage() {
                             {product.name}
                             {isLowStock && <Badge variant="destructive" className="ml-2">Bajo Stock</Badge>}
                           </TableCell>
+                          <TableCell>
+                              {product.category ? (
+                                  <Badge variant="secondary">{product.category.name}</Badge>
+                              ) : <span className="text-muted-foreground">-</span>}
+                          </TableCell>
                           <TableCell className="font-mono text-xs">{product.barcode || '-'}</TableCell>
                           <TableCell>
                               {isLowStock ? (
@@ -342,7 +388,16 @@ export default function InventoryPage() {
                               )}
                           </TableCell>
                           {isOwner && <TableCell className="text-right text-muted-foreground">${product.cost || 0}</TableCell>}
-                          <TableCell className="text-right font-bold text-lg">${product.price}</TableCell>
+                          <TableCell className="text-right font-bold text-lg">
+                              <div className="flex flex-col items-end">
+                                  <span>${calculatePrice(product, selectedList)}</span>
+                                  {selectedList && (
+                                     <span className="text-[10px] text-muted-foreground line-through decoration-red-500/50">
+                                         Base: ${product.price}
+                                     </span>
+                                  )}
+                              </div>
+                          </TableCell>
                           <TableCell className="text-right">
                               <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                                   <StockAdjustmentDialog 

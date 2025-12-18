@@ -4,8 +4,9 @@ import { useState, useEffect } from "react"
 import { supabase } from "@/utils/supabase/client"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { Calendar as CalendarIcon, Eye, DollarSign, CreditCard, ArrowUpRight, Store } from "lucide-react"
+import { Calendar as CalendarIcon, Eye, DollarSign, CreditCard, ArrowUpRight, Store, CheckCircle2 } from "lucide-react"
 
+import { BillingDialog } from "@/components/sales/billing-dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
@@ -58,6 +59,9 @@ interface Sale {
   profiles?: {
       full_name: string
   }
+  cae?: string | null
+  invoice_number?: number | null
+  invoice_type?: string | null
 }
 
 export function SalesList() {
@@ -238,6 +242,7 @@ export function SalesList() {
               <TableHead>Hora</TableHead>
               <TableHead>Kiosco</TableHead>
               <TableHead>Método</TableHead>
+              <TableHead>AFIP</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -291,6 +296,20 @@ export function SalesList() {
                                  </span>
                              )}
                         </div>
+                    </TableCell>
+                    <TableCell>
+                        {sale.cae ? (
+                             <Badge variant="outline" className="border-green-200 bg-green-50 text-green-700 hover:bg-green-100 gap-1 pr-2">
+                                <CheckCircle2 className="h-3 w-3" />
+                                FC {sale.invoice_type}-{sale.invoice_number}
+                             </Badge>
+                        ) : (
+                             <BillingDialog 
+                                saleId={sale.id} 
+                                total={sale.total} 
+                                onSuccess={() => fetchSales(date || new Date())} 
+                             />
+                        )}
                     </TableCell>
                     <TableCell className="text-right font-bold text-foreground tabular-nums">
                         {formatCurrency(sale.total)}

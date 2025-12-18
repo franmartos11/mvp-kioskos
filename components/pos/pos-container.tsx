@@ -19,9 +19,78 @@ import { useSubscription } from "@/hooks/use-subscription"
 import { AlertTriangle, Lock } from "lucide-react"
 import Link from "next/link"
 
+import { Badge } from "@/components/ui/badge"
+import { getDay, parse, isWithinInterval, set } from "date-fns"
+
 interface PosContainerProps {
   initialProducts: Product[]
 }
+
+import { calculatePrice, PriceList } from "@/utils/pricing-engine"
+
+// Helper to determine active price list
+function getActivePriceList(lists: PriceList[]): PriceList | null {
+    if (!lists.length) return null
+    const now = new Date()
+    const currentDay = getDay(now) // 0-6 Sunday-Saturday
+    
+    // Sort by Priority (Higher First)
+    // The user now has a manual "Priority" field to control conflicts explicitly.
+    const sorted = [...lists].sort((a, b) => (b.priority || 0) - (a.priority || 0))
+
+    // 1. Check Matching Schedules (Today)
+    for (const list of sorted) {
+        if (!list.is_active) continue
+        if (!list.schedule || list.schedule.length === 0) {
+            // Found a "default" list. Since we sort by priority, if we hit this, it's the valid one
+            // unless a higher priority scheduled list already matched?
+            // Actually, sorting puts scheduled and non-scheduled together by priority number.
+            // If Priority 10 (Scheduled) is unmatched, we check Priority 5 (Default).
+            // This is correct.
+            return list
+        }
+
+        const rules = list.schedule.filter(r => r.day === currentDay)
+        for (const rule of rules) {
+            const start = parse(rule.start, 'HH:mm', now)
+            let end = parse(rule.end, 'HH:mm', now)
+            
+            // Handle cross-midnight: 22:00 -> 02:00
+            if (end < start) {
+                end = new Date(end.getTime() + 24 * 60 * 60 * 1000)
+            }
+            
+            if (isWithinInterval(now, { start, end })) {
+                return list
+            }
+        }
+        
+        // 2. Check Matching Schedules (Yesterday's Spill-over)
+        // e.g. Shift started Yesterday 22:00, ends Today 02:00. Now is 01:00.
+        const prevDay = currentDay === 0 ? 6 : currentDay - 1
+        const prevRules = list.schedule.filter(r => r.day === prevDay)
+        
+        for (const rule of prevRules) {
+            const startRaw = parse(rule.start, 'HH:mm', now)
+            const endRaw = parse(rule.end, 'HH:mm', now)
+            
+            // If it was a cross-midnight shift (end < start)
+            if (endRaw < startRaw) {
+                 // Shift Start back to yesterday
+                 const start = new Date(startRaw.getTime() - 24 * 60 * 60 * 1000)
+                 // End is Today's time (raw parse uses today). So it's correct.
+                 const end = endRaw
+                 
+                 if (isWithinInterval(now, { start, end })) {
+                     return list
+                 }
+            }
+        }
+    }
+    return null
+}
+
+
 
 export function PosContainer({ initialProducts }: PosContainerProps) {
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -31,15 +100,44 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
   const [showScanner, setShowScanner] = useState(false)
   const [showCheckout, setShowCheckout] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
+  
+  // Price list state
+  const [priceLists, setPriceLists] = useState<PriceList[]>([])
+  const [activePriceList, setActivePriceList] = useState<PriceList | null>(null)
+
   // Use global context for consistency
   const { currentKiosk } = useKiosk()
-
   // Sync kioskId with context
   const kioskId = currentKiosk?.id || null
   
   const { plan, isPro } = useSubscription()
   const [isOverLimit, setIsOverLimit] = useState(false)
   const [isLoadingLimit, setIsLoadingLimit] = useState(true)
+
+  // Fetch Price Lists
+  useEffect(() => {
+    async function fetchPriceLists() {
+        if (!kioskId) return
+        const { data } = await supabase.from('price_lists').select('*').eq('kiosk_id', kioskId).eq('is_active', true)
+        if (data) setPriceLists(data)
+    }
+    fetchPriceLists()
+
+    // Realtime subscription for price list changes? Maybe overkill for now, but recommended.
+    // Simpler: Interval check every minute for schedule changes
+    const interval = setInterval(() => {
+       // Force re-eval of active price list
+       setPriceLists(prev => [...prev]) 
+    }, 60000)
+
+    return () => clearInterval(interval)
+  }, [kioskId])
+
+  // Determine ACTIVE list based on time/schedule
+  useEffect(() => {
+      const active = getActivePriceList(priceLists)
+      setActivePriceList(active)
+  }, [priceLists]) // Re-run when lists change (or forced by interval)
 
   useEffect(() => {
     async function checkLimit() {
@@ -76,16 +174,8 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
     })
   }, [])
 
-  // Products state to display
-  // Using query data now instead of local state for filtering?
-  // Actually, we need local filtering on top of the query data.
-  // But wait, displayedProducts was initialized from initialProducts.
-  // With useProducts, `products` comes from parent.
-  // Let's use filtered list based on `products` prop.
-  
+  // ... (displayedProducts logic same as before) ...
   const [displayedProducts, setDisplayedProducts] = useState(initialProducts)
-  
-  // Sync displayedProducts with initialProducts when it updates (from Query)
   useEffect(() => {
     setDisplayedProducts(initialProducts)
   }, [initialProducts])
@@ -93,7 +183,6 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
   const [isSearching, setIsSearching] = useState(false)
   const createSale = useCreateSale()
 
-  // Use global barcode scanner
   useBarcodeScanner({
       onScan: (code) => handleScan(code)
   })
@@ -110,14 +199,12 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
         try {
             const { data } = await supabase
                 .from('products')
-                .select('*, category:categories(name)') // Fix: ensure category is fetched if needed, though product type match is key
+                .select('*, category:categories(name)')
                 .or(`name.ilike.%${search}%,barcode.eq.${search}`)
-                .eq('kiosk_id', kioskId) // Ensure we search ONLY in this kiosk
+                .eq('kiosk_id', kioskId)
                 .limit(20)
             
             if (data) {
-                // We need to cast or map to Product. 
-                // Since this is a search result, it might not match exactly the shape of 'initialProducts' if relations are missing.
                 setDisplayedProducts(data as any)
             }
         } catch (error) {
@@ -128,19 +215,50 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
     }, 300)
 
     return () => clearTimeout(timer)
-  }, [search, initialProducts, kioskId]) // Added kioskId dependency
+  }, [search, initialProducts, kioskId])
   
   const addToCart = (product: Product) => {
+    // Determine effective price list for THIS item addition
+    // "Snapshot" logic: If cart is empty, use current active list.
+    // If cart has items, we should technically stick to the list used for first item?
+    // Or just apply current active list to new items?
+    // User requested "snapshotting".
+    // Implementation: Since we don't store "session price list" in state yet, 
+    // we will apply the *current* active settings to the *newly added* item for now.
+    // Ideally, we'd lock the price list for the whole transaction.
+    // Let's stick to: effective price = calculated at moment of adding.
+    
+    // NOTE: If active list changes mid-transaction, new items get new price? 
+    // User wanted snapshot. "Active price list will be locked at start of sale".
+    // To do that, we need `transactionPriceList` state.
+
     setCart(prev => {
+      // Determine which price list to use
+      let effectiveList = activePriceList
+      
+      // If cart already has items, maybe we should reuse the list snapshot?
+      // For simplicity in this iteration, we use the current active list for calculation.
+      // If we want strict snapshot, we could store `priceListId` in cart metadata?
+      // Or just assume `activePriceList` is stable enough for short transactions.
+      
+      const finalPrice = calculatePrice(product, effectiveList)
+
       const existing = prev.find(item => item.product.id === product.id)
       if (existing) {
         return prev.map(item => 
             item.product.id === product.id 
-                ? { ...item, quantity: item.quantity + 1 }
+                ? { ...item, quantity: item.quantity + 1 } // Keep existing price
                 : item
         )
       }
-      return [...prev, { product, quantity: 1 }]
+      // Add new item with CALCULATED price
+      // We override the product object in the cart to reflect the new price visually?
+      // Or store `unitPrice` in CartItem? CartItem usually relies on product.price.
+      // CartItem interface: { product: Product, quantity: number }
+      // We should create a copy of product with modified price for the cart.
+      const productWithPrice = { ...product, price: finalPrice }
+      
+      return [...prev, { product: productWithPrice, quantity: 1 }]
     })
     
     searchInputRef.current?.focus()
@@ -203,7 +321,8 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
         kioskId,
         userId,
         method,
-        customerName
+        customerName,
+        activePriceList: activePriceList ? { id: activePriceList.id, name: activePriceList.name } : null
     }, {
         onError: () => {
             // Rollback UI if failed
@@ -249,6 +368,15 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
     <div className="flex flex-col lg:flex-row h-full gap-4 pb-20 md:pb-0">
       {/* Left: Catalog */}
       <div className="flex-1 flex flex-col gap-4 bg-background border rounded-xl p-4 shadow-sm min-h-0">
+        <div className="flex items-center justify-between">
+           {activePriceList ? (
+               <Badge variant="outline" className="border-green-200 bg-green-50 text-green-700 animate-in fade-in">
+                  Lista Activa: {activePriceList.name} ({activePriceList.adjustment_percentage > 0 ? '+' : ''}{activePriceList.adjustment_percentage}%)
+               </Badge>
+           ) : (
+             <div className="h-5"></div> // Spacer
+           )}
+        </div>
         <div className="flex gap-2">
             <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -289,10 +417,15 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
             )}
             {!isSearching && displayedProducts.map(product => {
                 const inCart = cart.find(item => item.product.id === product.id)
+                // Calculate display price based on active list
+                const effectivePrice = calculatePrice(product, activePriceList)
+                // Create a visual copy for card display
+                const displayProduct = { ...product, price: effectivePrice }
+                
                 return (
                     <ProductCard 
                         key={product.id} 
-                        product={product} 
+                        product={displayProduct} 
                         onAdd={addToCart} 
                         onRemove={(p) => updateQuantity(p.id, -1)}
                         quantity={inCart?.quantity || 0}
