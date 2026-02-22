@@ -39,6 +39,14 @@ export function RegisterForm() {
         return
       }
 
+      // Supabase returns a fake user with empty identities if the email already exists 
+      // (when email confirmations are enabled and security settings are default)
+      if (authData.user.identities && authData.user.identities.length === 0) {
+        toast.error("Este email ya está registrado. Por favor inicia sesión.")
+        setLoading(false)
+        return
+      }
+
       const userId = authData.user.id
 
       // 2. Create Kiosk (via RPC to bypass RLS/Session issues)
