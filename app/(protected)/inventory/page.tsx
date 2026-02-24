@@ -23,13 +23,13 @@ import { updateProductPricesBulk, updateProductPricesBySupplier } from "@/app/ac
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown, BoxSelect, Users, ClipboardList } from "lucide-react";
 import { BulkSupplierDialog } from "@/components/inventory/bulk-supplier-dialog";
@@ -53,29 +53,29 @@ export default function InventoryPage() {
   const ITEMS_PER_PAGE = 10
 
   // Use TanStack Query
-  const { 
-    data: allProducts = [], 
-    isLoading: isQueryLoading, 
+  const {
+    data: allProducts = [],
+    isLoading: isQueryLoading,
     isError,
     error,
-    refetch 
+    refetch
   } = useProducts(currentKiosk?.id)
 
   // Price List View State
   const [priceLists, setPriceLists] = useState<PriceList[]>([])
   const [viewLimitId, setViewLimitId] = useState<string>("base") // "base" or UUID
-  
+
   useEffect(() => {
     if (currentKiosk?.id) {
-        supabase
-            .from('price_lists')
-            .select('*')
-            .eq('kiosk_id', currentKiosk.id)
-            .eq('is_active', true)
-            .order('priority', { ascending: false })
-            .then(({ data }) => {
-                if (data) setPriceLists(data as any)
-            })
+      supabase
+        .from('price_lists')
+        .select('*')
+        .eq('kiosk_id', currentKiosk.id)
+        .eq('is_active', true)
+        .order('priority', { ascending: false })
+        .then(({ data }) => {
+          if (data) setPriceLists(data as any)
+        })
     }
   }, [currentKiosk?.id])
 
@@ -84,9 +84,9 @@ export default function InventoryPage() {
   const isLoading = isQueryLoading || !currentKiosk
 
   useEffect(() => {
-      if (isError && error) {
-          toast.error("Error al cargar productos: " + error.message)
-      }
+    if (isError && error) {
+      toast.error("Error al cargar productos: " + error.message)
+    }
   }, [isError, error])
 
 
@@ -98,12 +98,12 @@ export default function InventoryPage() {
 
   // Filter products client-side for search
   const filteredProducts = allProducts.filter(product => {
-      const searchLower = searchTerm.toLowerCase()
-      return (
-          product.name.toLowerCase().includes(searchLower) ||
-          product.barcode?.toLowerCase().includes(searchLower) ||
-          (product as any).category?.name?.toLowerCase().includes(searchLower)
-      )
+    const searchLower = searchTerm.toLowerCase()
+    return (
+      product.name.toLowerCase().includes(searchLower) ||
+      product.barcode?.toLowerCase().includes(searchLower) ||
+      (product as any).category?.name?.toLowerCase().includes(searchLower)
+    )
   })
 
   // Client-side pagination
@@ -115,7 +115,7 @@ export default function InventoryPage() {
 
   // Determine user role
   const isOwner = currentKiosk?.role === 'owner'
-  
+
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [showBulkDialog, setShowBulkDialog] = useState(false);
   const [showSupplierDialog, setShowSupplierDialog] = useState(false);
@@ -163,9 +163,9 @@ export default function InventoryPage() {
       toast.error(result.error);
     } else {
       if ((result as any).warning) {
-          toast.warning((result as any).warning);
+        toast.warning((result as any).warning);
       } else {
-          toast.success("Precios actualizados correctamente");
+        toast.success("Precios actualizados correctamente");
       }
       refetch();
       setSelectedProducts(new Set());
@@ -184,133 +184,133 @@ export default function InventoryPage() {
 
   return (
     <div className="p-4 w-full space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Inventario</h1>
-            <p className="text-muted-foreground">Gestiona tus productos y stock.</p>
-          </div>
-          <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
-             {/* 1. SELECTION ACTION (Only appears when items selected) */}
-             {isSelectionMode && selectedProducts.size > 0 && isOwner && (
-                 <Button 
-                    variant="default" // Primary style for the main active context action
-                    onClick={() => setShowBulkDialog(true)}
-                    className="bg-blue-600 hover:bg-blue-700"
-                 >
-                    Actualizar {selectedProducts.size} productos
-                 </Button>
-             )}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Inventario</h1>
+          <p className="text-muted-foreground">Gestiona tus productos y stock.</p>
+        </div>
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
+          {/* 1. SELECTION ACTION (Only appears when items selected) */}
+          {isSelectionMode && selectedProducts.size > 0 && isOwner && (
+            <Button
+              variant="default" // Primary style for the main active context action
+              onClick={() => setShowBulkDialog(true)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Actualizar {selectedProducts.size} productos
+            </Button>
+          )}
 
-              {/* 2. STOCK CONTROL GROUP */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2">
-                    <ClipboardList className="h-4 w-4" />
-                    Control de Stock
-                    <ChevronDown className="h-4 w-4 opacity-50" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Auditorías</DropdownMenuLabel>
-                  <DropdownMenuItem onClick={() => window.location.href='/inventory/audit'}>
-                    <ClipboardList className="mr-2 h-4 w-4" /> Iniciar Recuento Ciego
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowAuditHistory(true)}>
-                    <HistoryIcon className="mr-2 h-4 w-4" /> Historial de Auditorías
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+          {/* 2. STOCK CONTROL GROUP */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <ClipboardList className="h-4 w-4" />
+                Control de Stock
+                <ChevronDown className="h-4 w-4 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Auditorías</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => window.location.href = '/inventory/audit'}>
+                <ClipboardList className="mr-2 h-4 w-4" /> Iniciar Recuento Ciego
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowAuditHistory(true)}>
+                <HistoryIcon className="mr-2 h-4 w-4" /> Historial de Auditorías
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-              {/* 3. TOOLS / BULK ACTIONS GROUP (OWNER ONLY) */}
-              {isOwner && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="gap-2">
-                        <BoxSelect className="h-4 w-4" />
-                        Herramientas
-                        <ChevronDown className="h-4 w-4 opacity-50" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Gestión</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                        <div className="p-2">
-                           <CategoriesManager />
-                        </div>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuLabel>Precios y Edición</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => setIsSelectionMode(!isSelectionMode)}>
-                        <BoxSelect className="mr-2 h-4 w-4" /> 
-                        {isSelectionMode ? "Desactivar Selección" : "Selección Manual"}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setShowSupplierDialog(true)}>
-                        <Users className="mr-2 h-4 w-4" /> Actualizar por Proveedor
-                      </DropdownMenuItem>
-                      
-                      <DropdownMenuSeparator />
-                      <DropdownMenuLabel>Datos</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => setShowHistoryDialog(true)}>
-                         <HistoryIcon className="mr-2 h-4 w-4" /> Historial de Precios
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-              )}
+          {/* 3. TOOLS / BULK ACTIONS GROUP (OWNER ONLY) */}
+          {isOwner && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <BoxSelect className="h-4 w-4" />
+                  Herramientas
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Gestión</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <div className="p-2">
+                  <CategoriesManager />
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Precios y Edición</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setIsSelectionMode(!isSelectionMode)}>
+                  <BoxSelect className="mr-2 h-4 w-4" />
+                  {isSelectionMode ? "Desactivar Selección" : "Selección Manual"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowSupplierDialog(true)}>
+                  <Users className="mr-2 h-4 w-4" /> Actualizar por Proveedor
+                </DropdownMenuItem>
 
-              {/* 4. CSV ACTIONS (OWNER ONLY) */}
-              {isOwner && <CsvActions products={allProducts} />}
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Datos</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setShowHistoryDialog(true)}>
+                  <HistoryIcon className="mr-2 h-4 w-4" /> Historial de Precios
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
-              {/* 5. PRIMARY CREATE BUTTON */}
-              <CreateProductDialog onSuccess={refetch} />
-          </div>
+          {/* 4. CSV ACTIONS (OWNER ONLY) */}
+          {isOwner && currentKiosk && <CsvActions products={allProducts} kioskId={currentKiosk.id} />}
+
+          {/* 5. PRIMARY CREATE BUTTON */}
+          <CreateProductDialog onSuccess={refetch} />
+        </div>
+      </div>
+
+      {/* View Controls Bar */}
+      <div className="flex flex-col sm:flex-row gap-4 items-center bg-muted/20 p-2 rounded-lg border">
+        <div className="flex items-center gap-2 flex-1 w-full">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar..."
+            className="h-8 border-none bg-transparent focus-visible:ring-0"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
 
-        {/* View Controls Bar */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center bg-muted/20 p-2 rounded-lg border">
-             <div className="flex items-center gap-2 flex-1 w-full">
-                <Search className="h-4 w-4 text-muted-foreground" />
-                <Input
-                   placeholder="Buscar..."
-                   className="h-8 border-none bg-transparent focus-visible:ring-0"
-                   value={searchTerm}
-                   onChange={(e) => setSearchTerm(e.target.value)}
-                />
-             </div>
-             
-             {/* Price List View Switcher */}
-             <div className="flex items-center gap-2 border-l pl-4">
-                 <span className="text-sm text-muted-foreground whitespace-nowrap">Ver Precios:</span>
-                 <Select value={viewLimitId} onValueChange={setViewLimitId}>
-                     <SelectTrigger className="h-8 w-[180px]">
-                         <SelectValue />
-                     </SelectTrigger>
-                     <SelectContent>
-                         <SelectItem value="base">Precio Base (Costo + Margen)</SelectItem>
-                         {priceLists.map(list => (
-                             <SelectItem key={list.id} value={list.id}>{list.name}</SelectItem>
-                         ))}
-                     </SelectContent>
-                 </Select>
-             </div>
+        {/* Price List View Switcher */}
+        <div className="flex items-center gap-2 border-l pl-4">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">Ver Precios:</span>
+          <Select value={viewLimitId} onValueChange={setViewLimitId}>
+            <SelectTrigger className="h-8 w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="base">Precio Base (Costo + Margen)</SelectItem>
+              {priceLists.map(list => (
+                <SelectItem key={list.id} value={list.id}>{list.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        
-        <Card>
-            <CardHeader>
-                <CardTitle>Productos</CardTitle>
-                <CardDescription>
-                    Lista completa de productos en inventario.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-            <Table>
-             {/* ... Table Header ... */}
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Productos</CardTitle>
+          <CardDescription>
+            Lista completa de productos en inventario.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            {/* ... Table Header ... */}
             <TableHeader>
               <TableRow>
                 {isSelectionMode && (
                   <TableHead className="w-[40px]">
-                      <Checkbox 
-                          checked={paginatedProducts.length > 0 && paginatedProducts.every(p => selectedProducts.has(p.id))}
-                          onCheckedChange={(checked) => toggleAll(checked as boolean)}
-                      />
+                    <Checkbox
+                      checked={paginatedProducts.length > 0 && paginatedProducts.every(p => selectedProducts.has(p.id))}
+                      onCheckedChange={(checked) => toggleAll(checked as boolean)}
+                    />
                   </TableHead>
                 )}
                 <TableHead className="w-[80px]">Imagen</TableHead>
@@ -339,136 +339,137 @@ export default function InventoryPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                  paginatedProducts.map((product) => {
-                      const isLowStock = product.stock <= (product.min_stock ?? 5);
-                      return (
-                      <TableRow 
-                        key={product.id} 
-                        className={`transition-colors ${isSelectionMode ? 'hover:bg-muted/50' : 'cursor-pointer hover:bg-muted/50'}`}
-                        onClick={() => handleProductClick(product)}
-                      >
-                          {isSelectionMode && (
-                            <TableCell onClick={(e) => e.stopPropagation()}>
-                                <Checkbox 
-                                    checked={selectedProducts.has(product.id)}
-                                    onCheckedChange={() => toggleProduct(product.id)}
-                                />
-                            </TableCell>
+                paginatedProducts.map((product) => {
+                  const isLowStock = product.stock <= (product.min_stock ?? 5);
+                  return (
+                    <TableRow
+                      key={product.id}
+                      className={`transition-colors ${isSelectionMode ? 'hover:bg-muted/50' : 'cursor-pointer hover:bg-muted/50'}`}
+                      onClick={() => handleProductClick(product)}
+                    >
+                      {isSelectionMode && (
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedProducts.has(product.id)}
+                            onCheckedChange={() => toggleProduct(product.id)}
+                          />
+                        </TableCell>
+                      )}
+                      <TableCell>
+                        {/* ... Image ... */}
+                        {product.image_url ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={product.image_url}
+                            alt={product.name}
+                            className="h-10 w-10 rounded-md object-cover border"
+                          />
+                        ) : (
+                          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-secondary text-muted-foreground">
+                            <ImageIcon className="h-5 w-5" />
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-semibold">
+                        {product.name}
+                        {isLowStock && <Badge variant="destructive" className="ml-2">Bajo Stock</Badge>}
+                      </TableCell>
+                      <TableCell>
+                        {product.category ? (
+                          <Badge variant="secondary">{product.category.name}</Badge>
+                        ) : <span className="text-muted-foreground">-</span>}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{product.barcode || '-'}</TableCell>
+                      <TableCell>
+                        {isLowStock ? (
+                          <span className="text-red-600 dark:text-red-400 font-bold">{product.stock}</span>
+                        ) : (
+                          <span>{product.stock}</span>
+                        )}
+                      </TableCell>
+                      {isOwner && <TableCell className="text-right text-muted-foreground">${product.cost || 0}</TableCell>}
+                      <TableCell className="text-right font-bold text-lg">
+                        <div className="flex flex-col items-end">
+                          <span>${calculatePrice(product, selectedList)}</span>
+                          {selectedList && (
+                            <span className="text-[10px] text-muted-foreground line-through decoration-red-500/50">
+                              Base: ${product.price}
+                            </span>
                           )}
-                          <TableCell>
-                            {/* ... Image ... */}
-                            {product.image_url ? (
-                               /* eslint-disable-next-line @next/next/no-img-element */
-                              <img 
-                                src={product.image_url} 
-                                alt={product.name} 
-                                className="h-10 w-10 rounded-md object-cover border" 
-                              />
-                            ) : (
-                              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-secondary text-muted-foreground">
-                                <ImageIcon className="h-5 w-5" />
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell className="font-semibold">
-                            {product.name}
-                            {isLowStock && <Badge variant="destructive" className="ml-2">Bajo Stock</Badge>}
-                          </TableCell>
-                          <TableCell>
-                              {product.category ? (
-                                  <Badge variant="secondary">{product.category.name}</Badge>
-                              ) : <span className="text-muted-foreground">-</span>}
-                          </TableCell>
-                          <TableCell className="font-mono text-xs">{product.barcode || '-'}</TableCell>
-                          <TableCell>
-                              {isLowStock ? (
-                                  <span className="text-red-600 dark:text-red-400 font-bold">{product.stock}</span>
-                              ) : (
-                                  <span>{product.stock}</span>
-                              )}
-                          </TableCell>
-                          {isOwner && <TableCell className="text-right text-muted-foreground">${product.cost || 0}</TableCell>}
-                          <TableCell className="text-right font-bold text-lg">
-                              <div className="flex flex-col items-end">
-                                  <span>${calculatePrice(product, selectedList)}</span>
-                                  {selectedList && (
-                                     <span className="text-[10px] text-muted-foreground line-through decoration-red-500/50">
-                                         Base: ${product.price}
-                                     </span>
-                                  )}
-                              </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                              <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                                  <StockAdjustmentDialog 
-                                      product={product} 
-                                      onSuccess={() => refetch()}
-                                  />
-                                  <StockHistoryDialog product={product} />
-                              </div>
-                          </TableCell>
-                      </TableRow>
-                  )})
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                          <StockAdjustmentDialog
+                            product={product}
+                            onSuccess={() => refetch()}
+                          />
+                          <StockHistoryDialog product={product} />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
               )}
             </TableBody>
           </Table>
-          </CardContent>
-        </Card>
-        
-        {/* Pagination Controls */}
-        <div className="flex items-center justify-end space-x-2">
-            <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0 || isLoading}
-            >
-                Anterior
-            </Button>
-            <div className="text-sm text-muted-foreground">
-                Página {page + 1} de {totalPages}
-            </div>
-            <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => p + 1)}
-                disabled={page + 1 >= totalPages || isLoading}
-            >
-                Siguiente
-            </Button>
+        </CardContent>
+      </Card>
+
+      {/* Pagination Controls */}
+      <div className="flex items-center justify-end space-x-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage((p) => Math.max(0, p - 1))}
+          disabled={page === 0 || isLoading}
+        >
+          Anterior
+        </Button>
+        <div className="text-sm text-muted-foreground">
+          Página {page + 1} de {totalPages}
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage((p) => p + 1)}
+          disabled={page + 1 >= totalPages || isLoading}
+        >
+          Siguiente
+        </Button>
+      </div>
 
-        <BulkPriceDialog 
-          open={showBulkDialog} 
-          onOpenChange={setShowBulkDialog}
-          selectedCount={selectedProducts.size}
-          onConfirm={handleBulkUpdate}
-        />
+      <BulkPriceDialog
+        open={showBulkDialog}
+        onOpenChange={setShowBulkDialog}
+        selectedCount={selectedProducts.size}
+        onConfirm={handleBulkUpdate}
+      />
 
-        <BulkSupplierDialog
-          open={showSupplierDialog}
-          onOpenChange={setShowSupplierDialog}
-          onConfirm={handleSupplierUpdate}
-        />
+      <BulkSupplierDialog
+        open={showSupplierDialog}
+        onOpenChange={setShowSupplierDialog}
+        onConfirm={handleSupplierUpdate}
+      />
 
-        <PriceHistoryDialog 
-            open={showHistoryDialog}
-            onOpenChange={setShowHistoryDialog}
-        />
+      <PriceHistoryDialog
+        open={showHistoryDialog}
+        onOpenChange={setShowHistoryDialog}
+      />
 
 
-        
-        <ProductDetailsDialog 
-           open={detailsOpen}
-           onOpenChange={setDetailsOpen}
-           product={selectedProductForDetails}
-           onProductUpdated={() => refetch()}
-        />
-        
-        <AuditHistoryDialog 
-            open={showAuditHistory}
-            onOpenChange={setShowAuditHistory}
-        />
+
+      <ProductDetailsDialog
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+        product={selectedProductForDetails}
+        onProductUpdated={() => refetch()}
+      />
+
+      <AuditHistoryDialog
+        open={showAuditHistory}
+        onOpenChange={setShowAuditHistory}
+      />
     </div>
   );
 }
