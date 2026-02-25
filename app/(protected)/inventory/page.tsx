@@ -198,51 +198,32 @@ export default function InventoryPage() {
 
   return (
     <div className="p-4 w-full space-y-6">
-<<<<<<< HEAD
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Inventario</h1>
           <p className="text-muted-foreground">Gestiona tus productos y stock.</p>
         </div>
         <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
-          {/* 1. SELECTION ACTION (Only appears when items selected) */}
-          {isSelectionMode && selectedProducts.size > 0 && isOwner && (
-            <Button
-              variant="default" // Primary style for the main active context action
-              onClick={() => setShowBulkDialog(true)}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              Actualizar {selectedProducts.size} productos
-            </Button>
-          )}
-=======
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Inventario</h1>
-            <p className="text-muted-foreground">Gestiona tus productos y stock.</p>
-          </div>
-          <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
-             {/* 1. SELECTION ACTION (Only appears when items selected) */}
-             {isSelectionMode && selectedProducts.size > 0 && isOwner && (
-                 <div className="flex items-center gap-2">
-                     <Button 
-                        variant="default" // Primary style for the main active context action
-                        onClick={() => setShowBulkDialog(true)}
-                        className="bg-blue-600 hover:bg-blue-700"
-                     >
-                        Actualizar {selectedProducts.size} productos
-                     </Button>
-                     <Button
-                        variant="destructive"
-                        onClick={() => setShowDeleteDialog(true)}
-                        size="icon"
-                        title="Eliminar seleccionados"
-                     >
-                        <Trash className="h-4 w-4" />
-                     </Button>
-                 </div>
-             )}
->>>>>>> 4e44f7f (feat(inventory): add weighable products, support new csv columns, improve bulk delete chunking)
+           {/* 1. SELECTION ACTION (Only appears when items selected) */}
+           {isSelectionMode && selectedProducts.size > 0 && isOwner && (
+               <div className="flex items-center gap-2">
+                   <Button 
+                      variant="default" // Primary style for the main active context action
+                      onClick={() => setShowBulkDialog(true)}
+                      className="bg-blue-600 hover:bg-blue-700"
+                   >
+                      Actualizar {selectedProducts.size} productos
+                   </Button>
+                   <Button
+                      variant="destructive"
+                      onClick={() => setShowDeleteDialog(true)}
+                      size="icon"
+                      title="Eliminar seleccionados"
+                   >
+                      <Trash className="h-4 w-4" />
+                   </Button>
+               </div>
+           )}
 
           {/* 2. STOCK CONTROL GROUP */}
           <DropdownMenu>
@@ -495,24 +476,17 @@ export default function InventoryPage() {
         onConfirm={handleSupplierUpdate}
       />
 
-<<<<<<< HEAD
-      <PriceHistoryDialog
+      <BulkDeleteDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        selectedCount={selectedProducts.size}
+        onConfirm={handleBulkDelete}
+      />
+
+      <PriceHistoryDialog 
         open={showHistoryDialog}
         onOpenChange={setShowHistoryDialog}
       />
-=======
-        <BulkDeleteDialog
-          open={showDeleteDialog}
-          onOpenChange={setShowDeleteDialog}
-          selectedCount={selectedProducts.size}
-          onConfirm={handleBulkDelete}
-        />
-
-        <PriceHistoryDialog 
-            open={showHistoryDialog}
-            onOpenChange={setShowHistoryDialog}
-        />
->>>>>>> 4e44f7f (feat(inventory): add weighable products, support new csv columns, improve bulk delete chunking)
 
 
 
