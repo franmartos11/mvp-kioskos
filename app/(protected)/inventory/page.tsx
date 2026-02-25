@@ -19,7 +19,7 @@ import { CategoriesManager } from "@/components/inventory/categories-manager";
 import { CsvActions } from "@/components/inventory/csv-actions";
 import { useState, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { updateProductPricesBulk, updateProductPricesBySupplier } from "@/app/actions/bulk-actions";
+import { updateProductPricesBulk, updateProductPricesBySupplier, deleteProductsBulk } from "@/app/actions/bulk-actions";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,7 @@ import { ProductDetailsDialog } from "@/components/inventory/product-details-dia
 import { StockAdjustmentDialog } from "@/components/inventory/stock-adjustment-dialog";
 import { StockHistoryDialog } from "@/components/inventory/stock-history-dialog";
 import { AuditHistoryDialog } from "@/components/inventory/audit-history-dialog";
+import { BulkDeleteDialog } from "@/components/inventory/bulk-delete-dialog";
 import { useKiosk } from "@/components/providers/kiosk-provider";
 import { calculatePrice, PriceList } from "@/utils/pricing-engine";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -121,6 +122,7 @@ export default function InventoryPage() {
   const [showSupplierDialog, setShowSupplierDialog] = useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [showAuditHistory, setShowAuditHistory] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
 
   // Details Modal State
@@ -172,6 +174,18 @@ export default function InventoryPage() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedProducts);
+    const result = await deleteProductsBulk(ids);
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success(`${ids.length} productos eliminados correctamente`);
+      refetch();
+      setSelectedProducts(new Set());
+    }
+  };
+
   const handleSupplierUpdate = async (supplierId: string, percentage: number) => {
     const result = await updateProductPricesBySupplier(supplierId, percentage);
     if (result.error) {
@@ -184,6 +198,7 @@ export default function InventoryPage() {
 
   return (
     <div className="p-4 w-full space-y-6">
+<<<<<<< HEAD
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Inventario</h1>
@@ -200,6 +215,34 @@ export default function InventoryPage() {
               Actualizar {selectedProducts.size} productos
             </Button>
           )}
+=======
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Inventario</h1>
+            <p className="text-muted-foreground">Gestiona tus productos y stock.</p>
+          </div>
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
+             {/* 1. SELECTION ACTION (Only appears when items selected) */}
+             {isSelectionMode && selectedProducts.size > 0 && isOwner && (
+                 <div className="flex items-center gap-2">
+                     <Button 
+                        variant="default" // Primary style for the main active context action
+                        onClick={() => setShowBulkDialog(true)}
+                        className="bg-blue-600 hover:bg-blue-700"
+                     >
+                        Actualizar {selectedProducts.size} productos
+                     </Button>
+                     <Button
+                        variant="destructive"
+                        onClick={() => setShowDeleteDialog(true)}
+                        size="icon"
+                        title="Eliminar seleccionados"
+                     >
+                        <Trash className="h-4 w-4" />
+                     </Button>
+                 </div>
+             )}
+>>>>>>> 4e44f7f (feat(inventory): add weighable products, support new csv columns, improve bulk delete chunking)
 
           {/* 2. STOCK CONTROL GROUP */}
           <DropdownMenu>
@@ -452,10 +495,24 @@ export default function InventoryPage() {
         onConfirm={handleSupplierUpdate}
       />
 
+<<<<<<< HEAD
       <PriceHistoryDialog
         open={showHistoryDialog}
         onOpenChange={setShowHistoryDialog}
       />
+=======
+        <BulkDeleteDialog
+          open={showDeleteDialog}
+          onOpenChange={setShowDeleteDialog}
+          selectedCount={selectedProducts.size}
+          onConfirm={handleBulkDelete}
+        />
+
+        <PriceHistoryDialog 
+            open={showHistoryDialog}
+            onOpenChange={setShowHistoryDialog}
+        />
+>>>>>>> 4e44f7f (feat(inventory): add weighable products, support new csv columns, improve bulk delete chunking)
 
 
 

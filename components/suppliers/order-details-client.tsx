@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, CheckCircle, Wallet, CalendarDays, PackageCheck } from "lucide-react"
+import { ArrowLeft, Loader2, CheckCircle, Wallet, CalendarDays, PackageCheck, Trash2 } from "lucide-react"
 import { format } from "date-fns"
 import { toast } from "sonner"
 
@@ -64,6 +64,7 @@ export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
     // Actions State
     const [receiving, setReceiving] = useState(false) // Processing reception
     const [paying, setPaying] = useState(false) // Processing payment
+    const [deleting, setDeleting] = useState(false)
     const [paymentAmount, setPaymentAmount] = useState<string>("")
     const [paymentMethod, setPaymentMethod] = useState<string>("cash_register")
 
@@ -128,6 +129,60 @@ export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
             toast.error("Error al recibir mercadería")
         } finally {
             setReceiving(false)
+        }
+    }
+
+    const handleUpdateQuantity = async (itemId: string, newQty: number) => {
+        if (newQty < 0) return
+        
+        const targetItem = items.find(i => i.id === itemId)
+        if (!targetItem) return
+
+        const updatedItems = items.map(item => {
+            if (item.id === itemId) {
+                return {
+                    ...item,
+                    quantity: newQty,
+                    subtotal: newQty * item.cost
+                }
+            }
+            return item
+        })
+        
+        setItems(updatedItems)
+        
+        const newTotal = updatedItems.reduce((sum, item) => sum + item.subtotal, 0)
+        setOrder((prev: any) => ({ ...prev, total_amount: newTotal }))
+        setPaymentAmount(newTotal.toString())
+
+        try {
+            await supabase.from('supplier_order_items').update({
+                quantity: newQty,
+                subtotal: newQty * targetItem.cost
+            }).eq('id', itemId)
+            
+            await supabase.from('supplier_orders').update({
+                total_amount: newTotal
+            }).eq('id', orderId)
+            
+        } catch (error) {
+            console.error("Error updating quantity:", error)
+            toast.error("Error al actualizar la cantidad")
+            loadOrder() // Rollback on error
+        }
+    }
+
+    const handleDeleteOrder = async () => {
+        setDeleting(true)
+        try {
+            const { error } = await supabase.from('supplier_orders').delete().eq('id', orderId)
+            if (error) throw error
+            toast.success("Orden eliminada")
+            router.push('/suppliers/orders')
+        } catch (error) {
+            console.error(error)
+            toast.error("Error al eliminar la orden")
+            setDeleting(false)
         }
     }
 
@@ -271,7 +326,19 @@ export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
                                 {items.map((item: any) => (
                                     <TableRow key={item.id}>
                                         <TableCell className="font-medium">{item.product.name}</TableCell>
-                                        <TableCell className="text-right">{item.quantity}</TableCell>
+                                        <TableCell className="text-right">
+                                            {order.status === 'pending' ? (
+                                                <Input 
+                                                    type="number" 
+                                                    className="w-20 ml-auto text-right" 
+                                                    value={item.quantity}
+                                                    onChange={(e) => handleUpdateQuantity(item.id, Number(e.target.value))}
+                                                    step="any"
+                                                />
+                                            ) : (
+                                                item.quantity
+                                            )}
+                                        </TableCell>
                                         {isOwner && <TableCell className="text-right">${item.cost}</TableCell>}
                                         {isOwner && <TableCell className="text-right font-bold">${item.subtotal}</TableCell>}
                                     </TableRow>
@@ -322,6 +389,29 @@ export function OrderDetailsClient({ orderId }: OrderDetailsClientProps) {
                                             </AlertDialogFooter>
                                         </AlertDialogContent>
                                     </AlertDialog>
+
+                                    <div className="pt-4 border-t">
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="destructive" className="w-full flex items-center gap-2" disabled={deleting}>
+                                                    {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                                    Eliminar Orden
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>¿Eliminar Orden?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        Esta acción eliminará la orden de compra permanentemente y no se puede deshacer.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={handleDeleteOrder} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="p-3 bg-muted rounded-md flex items-center gap-2 text-sm text-muted-foreground">

@@ -296,6 +296,16 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
     }).filter(item => item.quantity > 0))
   }
 
+  const setExactQuantity = (productId: string, qty: number) => {
+    setCart(prev => prev.map(item => {
+        if (item.product.id === productId) {
+            const newQty = Math.max(0, qty)
+            return { ...item, quantity: newQty }
+        }
+        return item
+    }).filter(item => item.quantity > 0))
+  }
+
   const removeFromCart = (productId: string) => {
     setCart(prev => prev.filter(item => item.product.id !== productId))
   }
@@ -470,6 +480,7 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
             <Cart 
                 items={cart} 
                 onUpdateQuantity={updateQuantity} 
+                onSetQuantity={setExactQuantity}
                 onRemove={removeFromCart} 
             />
             

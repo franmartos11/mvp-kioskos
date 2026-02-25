@@ -22,6 +22,7 @@ import { supabase } from "@/utils/supabase/client"
 import { BarcodeScanner } from "./barcode-scanner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Switch } from "@/components/ui/switch"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts'
 
 import {
@@ -58,6 +59,9 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
   // Form State
   const [name, setName] = useState("")
   const [barcode, setBarcode] = useState("")
+  const [price, setPrice] = useState<number>(0)
+  const [stock, setStock] = useState<number>(0)
+  const [isWeighable, setIsWeighable] = useState<boolean>(false)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [categoryId, setCategoryId] = useState<string>("")
   const [categories, setCategories] = useState<{id: string, name: string}[]>([])
@@ -80,6 +84,9 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
     if (product) {
       setName(product.name)
       setBarcode(product.barcode || "")
+      setPrice(product.price)
+      setStock(product.stock)
+      setIsWeighable(product.is_weighable || false)
       setImageUrl(product.image_url)
       setCategoryId(product.category_id || "none")
       
@@ -166,6 +173,9 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
         .update({
           name,
           barcode: barcode || null,
+          price,
+          stock,
+          is_weighable: isWeighable,
           image_url: imageUrl,
           category_id: (categoryId === "none" || !categoryId) ? null : categoryId
         })
@@ -315,6 +325,29 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
                                 </div>
                             </div>
                             
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="price">Precio Venta</Label>
+                                    <Input 
+                                        id="price" 
+                                        type="number"
+                                        step="0.01"
+                                        value={price} 
+                                        onChange={(e) => setPrice(Number(e.target.value))} 
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="stock">Stock</Label>
+                                    <Input 
+                                        id="stock" 
+                                        type="number"
+                                        step="any"
+                                        value={stock} 
+                                        onChange={(e) => setStock(Number(e.target.value))} 
+                                    />
+                                </div>
+                            </div>
+                            
                             <div className="space-y-2">
                                 <Label>Categoría</Label>
                                 <Select value={categoryId} onValueChange={setCategoryId}>
@@ -328,6 +361,19 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
                                         ))}
                                     </SelectContent>
                                 </Select>
+                            </div>
+
+                            <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                <div className="space-y-0.5">
+                                    <Label>Se vende por peso</Label>
+                                    <p className="text-[0.8rem] text-muted-foreground">
+                                        Activa si el producto puede venderse en fracciones (ej: 0.5 kg).
+                                    </p>
+                                </div>
+                                <Switch
+                                    checked={isWeighable}
+                                    onCheckedChange={setIsWeighable}
+                                />
                             </div>
                         </div>
                     ) : (

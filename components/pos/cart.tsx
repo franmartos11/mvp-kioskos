@@ -5,10 +5,11 @@ import { Minus, Plus, Trash2, ShoppingCart } from "lucide-react"
 interface CartProps {
   items: CartItem[]
   onUpdateQuantity: (productId: string, delta: number) => void
+  onSetQuantity: (productId: string, qty: number) => void
   onRemove: (productId: string) => void
 }
 
-export function Cart({ items, onUpdateQuantity, onRemove }: CartProps) {
+export function Cart({ items, onUpdateQuantity, onSetQuantity, onRemove }: CartProps) {
   const total = items.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)
 
   if (items.length === 0) {
@@ -54,9 +55,20 @@ export function Cart({ items, onUpdateQuantity, onRemove }: CartProps) {
                             >
                                 <Minus className="h-3 w-3" />
                             </Button>
-                            <span className="w-10 text-center text-sm font-medium tabular-nums border-x h-8 flex items-center justify-center bg-muted/20">
-                                {item.quantity}
-                            </span>
+                            {item.product.is_weighable ? (
+                                <input 
+                                    type="number" 
+                                    step="any"
+                                    className="w-16 text-center text-sm font-medium tabular-nums border-x h-8 bg-muted/20 outline-none focus:bg-background"
+                                    value={item.quantity}
+                                    onChange={(e) => onSetQuantity(item.product.id, parseFloat(e.target.value) || 0)}
+                                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                                />
+                            ) : (
+                                <span className="w-10 text-center text-sm font-medium tabular-nums border-x h-8 flex items-center justify-center bg-muted/20">
+                                    {item.quantity}
+                                </span>
+                            )}
                             <Button 
                                 variant="ghost" 
                                 size="icon" 

@@ -11,6 +11,7 @@ export type Product = {
   min_stock?: number;
   supplier_id?: string | null;
   category_id?: string | null;
+  is_weighable?: boolean;
   category?: { name: string } | null;
   supplier?: { name: string } | null;
 };

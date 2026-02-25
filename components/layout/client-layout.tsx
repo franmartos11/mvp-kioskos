@@ -1,7 +1,9 @@
 "use client"
 
-import { usePathname } from "next/navigation"
+import { useEffect } from "react"
+import { usePathname, useRouter } from "next/navigation"
 import { Sidebar, MobileNav } from "@/components/layout/sidebar"
+import { supabase } from "@/utils/supabase/client"
 
 interface ClientLayoutProps {
   children: React.ReactNode
@@ -9,7 +11,21 @@ interface ClientLayoutProps {
 
 export function ClientLayout({ children }: ClientLayoutProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const isPublicPage = pathname === "/" || pathname === "/login" || pathname === "/register"
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Capture global recovery events (especially from Supabase Dashboard Implicit flow)
+      if (event === 'PASSWORD_RECOVERY') {
+        router.push("/update-password")
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [router])
 
   if (isPublicPage) {
     return <main className="flex-1 w-full">{children}</main>

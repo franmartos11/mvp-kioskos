@@ -26,15 +26,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
 import { supabase } from "@/utils/supabase/client"
 import { useRouter } from "next/navigation"
 import { useKiosk } from "@/components/providers/kiosk-provider"
@@ -55,6 +49,7 @@ const productSchema = z.object({
   image_url: z.string().optional().nullable(),
   supplier_id: z.string().optional(),
   category_id: z.string().optional(),
+  is_weighable: z.boolean().optional().default(false),
 })
 
 type ProductFormValues = z.infer<typeof productSchema>
@@ -126,6 +121,7 @@ export function CreateProductDialog({
             image_url: productToEdit.image_url,
             supplier_id: productToEdit.supplier_id || "",
             category_id: productToEdit.category_id || "",
+            is_weighable: productToEdit.is_weighable || false,
         })
         setPreview(productToEdit.image_url)
     } else if (open && !productToEdit) {
@@ -139,6 +135,7 @@ export function CreateProductDialog({
             image_url: null,
             supplier_id: "",
             category_id: "",
+            is_weighable: false,
         })
         setPreview(null)
     }
@@ -157,6 +154,7 @@ export function CreateProductDialog({
       image_url: null,
       supplier_id: "",
       category_id: "",
+      is_weighable: false,
     },
   })
 
@@ -192,6 +190,7 @@ export function CreateProductDialog({
           supplier_id: (values.supplier_id === "none" || !values.supplier_id) ? null : values.supplier_id,
           category_id: (values.category_id === "none" || !values.category_id) ? null : values.category_id,
           kiosk_id: currentKiosk.id,
+          is_weighable: values.is_weighable,
       }
 
       let error
@@ -366,6 +365,28 @@ export function CreateProductDialog({
                 </FormItem>
               )}
             />
+            
+            <FormField
+              control={form.control}
+              name="is_weighable"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                  <div className="space-y-0.5">
+                    <FormLabel>Se vende por peso</FormLabel>
+                    <p className="text-[0.8rem] text-muted-foreground">
+                      Activa si el producto puede venderse en fracciones (ej: 0.5 kg).
+                    </p>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
