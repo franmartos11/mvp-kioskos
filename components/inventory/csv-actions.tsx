@@ -2,8 +2,8 @@
 
 import { ChangeEvent, useState } from "react"
 import Papa from "papaparse"
-import * as XLSX from "xlsx"
-import { Download, Upload, Loader2 } from "lucide-react"
+import * as XLS from "xlsx"
+import { Download, Upload, Loader2, FileSpreadsheet } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
@@ -30,6 +30,11 @@ export function CsvActions({ products, kioskId }: { products: Product[], kioskId
 
   const processData = async (rows: any[]) => {
     try {
+      if (!kioskId) {
+          toast.error("No hay un kiosco activo seleccionado.")
+          return
+      }
+
       // 1. Obtener todas las categorías del kiosco para mapear nombres a IDs
       const { data: categories } = await supabase
         .from('categories')
@@ -39,18 +44,36 @@ export function CsvActions({ products, kioskId }: { products: Product[], kioskId
       const categoryMap = new Map((categories || []).map(c => [c.name.toLowerCase(), c.id]))
       const newCategories = new Set<string>()
 
+      const getCategory = (r: any) => r.category || r.Category || r.Categoria || r.categoria || r['Categoría'] || r['categoría'];
+
+      const cleanNumber = (val: string | number) => {
+          if (typeof val === 'number') return val;
+          if (!val) return 0;
+          return parseFloat(val.toString().replace(/[^0-9.-]+/g,"")) || 0;
+      };
+
       // 2. Mapear y recolectar categorías nuevas
       const preMappedProducts = rows.map((row) => {
         // Mapeo inteligente de campos según el Excel de la dueña
-        const name = row.name || row.Nombre || row.nombre || "Sin Nombre"
-        const barcode = row.barcode || row.Codigo || row.codigo || row["Código"] || null
-        const price = parseFloat(row.price || row.Precio || row["Precio unitario"] || row.precio || "0")
-        const cost = parseFloat(row.cost || row.Costo || row["Costo unitario"] || row.costo || "0")
-        const stock = parseInt(row.stock || row.Stock || row.Cant || row["Cant."] || row.stock || "0")
-        const categoryName = row.category || row.Categoría || row["Categoría"] || row.categoria || null
+        const rawName = row.name || row.Nombre || row.nombre || row.NOMBRE || "Sin Nombre"
+        const rawBarcode = row.barcode || row.Codigo || row.codigo || row.CODIGO || row["Código"] || null
+        const rawPrice = row.price || row.Precio || row.precio || row.PRECIO || row['Precio unitario'] || row['precio unitario'] || row['Precio Unitario'] || "0"
+        const rawCost = row.cost || row.Costo || row.costo || row.COSTO || row['Costo unitario'] || row['costo unitario'] || row['Costo Unitario'] || "0"
+        const rawStock = row.stock || row.Stock || row.stock || row.STOCK || row.Cant || row["Cant."] || "0"
+        const categoryName = getCategory(row)
         const description = row.description || row.Notas || row.notas || row.description || null
 
-        return { name, barcode, price, cost, stock, categoryName, description, kiosk_id: kioskId }
+        return { 
+          name: rawName, 
+          barcode: rawBarcode, 
+          price: cleanNumber(rawPrice), 
+          cost: cleanNumber(rawCost), 
+          stock: parseInt(cleanNumber(rawStock).toString(), 10) || 0, 
+          categoryName, 
+          description, 
+          is_weighable: row.is_weighable === true || row.is_weighable === 'true' || row.Pesable === true || row.Pesable === 'true' || false,
+          kiosk_id: kioskId 
+        }
       })
 
       // Identificar categorías que no existen
@@ -125,10 +148,10 @@ export function CsvActions({ products, kioskId }: { products: Product[], kioskId
       reader.onload = (e) => {
         try {
           const data = e.target?.result
-          const workbook = XLSX.read(data, { type: 'binary' })
+          const workbook = XLS.read(data, { type: 'binary' })
           const sheetName = workbook.SheetNames[0]
           const worksheet = workbook.Sheets[sheetName]
-          const json = XLSX.utils.sheet_to_json(worksheet)
+          const json = XLS.utils.sheet_to_json(worksheet)
           processData(json)
         } catch (error) {
           console.error(error)
@@ -158,7 +181,7 @@ export function CsvActions({ products, kioskId }: { products: Product[], kioskId
       <div className="relative">
         <input
           type="file"
-          accept=".csv,.xlsx,.xls"
+          accept=".csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
           onChange={handleImport}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           disabled={isImporting}

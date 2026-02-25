@@ -200,3 +200,63 @@ export async function revertPriceChange(historyId: string) {
         return { error: e.message };
     }
 }
+
+export async function deleteProductsBulk(productIds: string[]) {
+    const supabase = await createClient();
+
+    console.log("Intentando eliminar productos, total:", productIds?.length);
+
+    if (!productIds || !Array.isArray(productIds) || !productIds.length) {
+        return { error: "No hay productos seleccionados o el formato es incorrecto." };
+    }
+
+    try {
+        const CHUNK_SIZE = 100;
+        let deletedCount = 0;
+        let errors = [];
+
+        // PostgREST limits the length of the URL. Using .in() with 1000 UUIDs will result in 400 Bad Request / URI Too Long.
+        // We split the deletions into safe chunks.
+        for (let i = 0; i < productIds.length; i += CHUNK_SIZE) {
+            const chunk = productIds.slice(i, i + CHUNK_SIZE);
+            
+            const { error, status, statusText } = await supabase
+                .from('products')
+                .delete()
+                .in('id', chunk);
+
+            if (error) {
+                console.error("Error from Supabase on delete chunk:", error, "Status:", status, statusText);
+                errors.push({ error, status });
+                
+                // Si es un error crítico de sintaxis o foreign key, podemos detenernos
+                if (error.code === '23503' || error.message?.toLowerCase().includes('foreign key')) {
+                    return { error: "No se pueden eliminar algunos productos seleccionados porque tienen historial asociado (ventas, pedidos, movimientos). Desmarca los productos que ya hayan recibido movimientos e intenta de nuevo." };
+                }
+                if (error.code === '22P02' || error.message?.toLowerCase().includes('invalid input syntax for type uuid')) {
+                    return { error: "ID de producto inválido detectado." };
+                }
+                // Si encontramos un error, detenemos el loop completo para no causar más estragos
+                break;
+            } else {
+                deletedCount += chunk.length;
+            }
+        }
+
+        if (errors.length > 0) {
+             const { error: firstError, status: firstStatus } = errors[0];
+             if (firstError.message === 'Bad Request' || firstStatus === 400) {
+                  return { error: "Solicitud incorrecta al procesar un bloque de productos." };
+             }
+             if (firstError.code === '409' || firstError.details?.toLowerCase().includes('referenced from table')) {
+                  return { error: "Conflicto al eliminar. Es probable que uno de los productos seleccionados esté en uso." };
+             }
+             throw new Error(firstError.message || "Error desconocido al intentar eliminar los productos.");
+        }
+
+        return { success: true, count: deletedCount };
+    } catch (e: any) {
+        console.error("Caught exception deleting products:", e);
+        return { error: e.message || "Error de red o servidor al eliminar. Revisa la consola para más detalles." };
+    }
+}
