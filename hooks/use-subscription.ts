@@ -5,12 +5,27 @@ import { supabase } from "@/utils/supabase/client"
 
 export type PlanType = 'free' | 'pro' | 'enterprise'
 
+const PLAN_CACHE_KEY = 'kiosk_plan_cache'
+
 export function useSubscription() {
-    const [plan, setPlan] = useState<PlanType>('free')
+    // Restore from cache immediately to prevent the ~30s loading flash
+    const [plan, setPlan] = useState<PlanType>(() => {
+        if (typeof window !== 'undefined') {
+            const cached = localStorage.getItem(PLAN_CACHE_KEY)
+            if (cached === 'pro' || cached === 'enterprise' || cached === 'free') return cached
+        }
+        return 'free'
+    })
     const [status, setStatus] = useState<string>('active')
     const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null)
     const [hasUsedTrial, setHasUsedTrial] = useState(false)
-    const [loading, setLoading] = useState(true)
+    // If we have a cached plan, skip the loading state entirely
+    const [loading, setLoading] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return !localStorage.getItem(PLAN_CACHE_KEY)
+        }
+        return true
+    })
 
     useEffect(() => {
         async function load() {
@@ -32,20 +47,24 @@ export function useSubscription() {
                         setHasUsedTrial(true)
                     }
 
-                    // Check if trial is valid
                     if (data.status === 'trialing') {
                         const endDate = new Date(data.trial_ends_at)
                         if (endDate > new Date()) {
-                             setPlan('pro') // Treat as Pro during trial
-                             setStatus('trialing')
-                             setTrialEndsAt(data.trial_ends_at)
+                            const resolvedPlan: PlanType = 'pro'
+                            setPlan(resolvedPlan)
+                            localStorage.setItem(PLAN_CACHE_KEY, resolvedPlan)
+                            setStatus('trialing')
+                            setTrialEndsAt(data.trial_ends_at)
                         } else {
-                            // Trial expired, revert to free locally (backend should handle this properly or user sees expired)
-                             setPlan('free')
-                             setStatus('past_due') 
+                            const resolvedPlan: PlanType = 'free'
+                            setPlan(resolvedPlan)
+                            localStorage.setItem(PLAN_CACHE_KEY, resolvedPlan)
+                            setStatus('past_due')
                         }
                     } else if (data.status === 'active') {
-                        setPlan(data.plan_id as PlanType)
+                        const resolvedPlan = data.plan_id as PlanType
+                        setPlan(resolvedPlan)
+                        localStorage.setItem(PLAN_CACHE_KEY, resolvedPlan)
                         setStatus('active')
                     }
                 }

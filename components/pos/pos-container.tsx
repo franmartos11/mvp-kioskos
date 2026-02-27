@@ -110,7 +110,7 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
   // Sync kioskId with context
   const kioskId = currentKiosk?.id || null
   
-  const { plan, isPro } = useSubscription()
+  const { plan, isPro, loading: subLoading } = useSubscription()
   const [isOverLimit, setIsOverLimit] = useState(false)
   const [isLoadingLimit, setIsLoadingLimit] = useState(true)
 
@@ -141,9 +141,11 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
 
   useEffect(() => {
     async function checkLimit() {
+        // Wait for subscription to resolve before checking
+        if (subLoading) return
         if (!kioskId) return
         
-        // Skip check for Pro users
+        // Skip check for Pro/Enterprise users entirely
         if (isPro) {
             setIsOverLimit(false)
             setIsLoadingLimit(false)
@@ -164,7 +166,7 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
     }
 
     checkLimit()
-  }, [kioskId, isPro, plan])
+  }, [kioskId, isPro, plan, subLoading])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -175,6 +177,7 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
   }, [])
 
   // ... (displayedProducts logic same as before) ...
+
   const [displayedProducts, setDisplayedProducts] = useState(initialProducts)
   useEffect(() => {
     setDisplayedProducts(initialProducts)
@@ -343,7 +346,7 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
     })
   }
 
-  if (isLoadingLimit) {
+  if (subLoading || isLoadingLimit) {
       return <div className="flex items-center justify-center h-full">Cargando...</div>
   }
 
