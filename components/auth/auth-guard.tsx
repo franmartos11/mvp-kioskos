@@ -73,7 +73,9 @@ export function AuthGuard({ children }: AuthGuardProps) {
     return () => {
       subscription.unsubscribe()
     }
-  }, [router, pathname])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // NOTE: intentionally empty deps - auth check runs once on mount only.
+  // Adding router or pathname here causes re-subscription on every navigation.
 
   const queryClient = useQueryClient()
 

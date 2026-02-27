@@ -44,7 +44,10 @@ export function KioskProvider({ children }: { children: React.ReactNode }) {
         init()
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            // Only refresh on actual sign-in, NOT on TOKEN_REFRESHED.
+            // Supabase renews the JWT silently every ~1hr via TOKEN_REFRESHED —
+            // reacting to it was causing a full re-render that looked like a POS reload.
+            if (event === 'SIGNED_IN') {
                 refreshKiosks()
             }
             if (event === 'SIGNED_OUT') {
