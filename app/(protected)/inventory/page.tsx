@@ -92,26 +92,24 @@ export default function InventoryPage() {
 
 
 
-  // Reset page when search term changes
-  useEffect(() => {
-    setPage(0)
-  }, [searchTerm])
-
   // Filter products client-side for search
   const filteredProducts = allProducts.filter(product => {
+    if (!searchTerm) return true
     const searchLower = searchTerm.toLowerCase()
     return (
       product.name.toLowerCase().includes(searchLower) ||
-      product.barcode?.toLowerCase().includes(searchLower) ||
-      (product as any).category?.name?.toLowerCase().includes(searchLower)
+      (product.barcode?.toLowerCase() ?? '').includes(searchLower) ||
+      ((product as any).category?.name?.toLowerCase() ?? '').includes(searchLower)
     )
   })
 
   // Client-side pagination
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE) || 1
+  // Clamp page to valid range to prevent empty slices after search
+  const currentPage = Math.min(page, Math.max(0, totalPages - 1))
   const paginatedProducts = filteredProducts.slice(
-    page * ITEMS_PER_PAGE,
-    (page + 1) * ITEMS_PER_PAGE
+    currentPage * ITEMS_PER_PAGE,
+    (currentPage + 1) * ITEMS_PER_PAGE
   )
 
   // Determine user role
@@ -296,7 +294,10 @@ export default function InventoryPage() {
             placeholder="Buscar..."
             className="h-8 border-none bg-transparent focus-visible:ring-0"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
+              setPage(0) // Reset to first page synchronously with search
+            }}
           />
         </div>
 
@@ -446,18 +447,18 @@ export default function InventoryPage() {
           variant="outline"
           size="sm"
           onClick={() => setPage((p) => Math.max(0, p - 1))}
-          disabled={page === 0 || isLoading}
+          disabled={currentPage === 0 || isLoading}
         >
           Anterior
         </Button>
         <div className="text-sm text-muted-foreground">
-          Página {page + 1} de {totalPages}
+          Página {currentPage + 1} de {totalPages} ({filteredProducts.length} productos)
         </div>
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setPage((p) => p + 1)}
-          disabled={page + 1 >= totalPages || isLoading}
+          onClick={() => setPage((p) => Math.min(p + 1, totalPages - 1))}
+          disabled={currentPage + 1 >= totalPages || isLoading}
         >
           Siguiente
         </Button>

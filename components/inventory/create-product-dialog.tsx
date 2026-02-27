@@ -7,6 +7,7 @@ import * as z from "zod"
 import { Loader2, Plus, ScanBarcode, Upload, Image as ImageIcon } from "lucide-react"
 import { BarcodeScanner } from "./barcode-scanner"
 import { toast } from "sonner"
+import { useQueryClient } from "@tanstack/react-query"
 import { X as IconX } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -30,7 +31,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { supabase } from "@/utils/supabase/client"
-import { useRouter } from "next/navigation"
 import { useKiosk } from "@/components/providers/kiosk-provider"
 import { useSubscription } from "@/hooks/use-subscription"
 import { AlertCircle } from "lucide-react"
@@ -70,6 +70,7 @@ export function CreateProductDialog({
   productToEdit 
 }: CreateProductDialogProps = {}) {
   const { currentKiosk } = useKiosk()
+  const queryClient = useQueryClient()
   const [internalOpen, setInternalOpen] = useState(false)
   
   // Use controlled state if provided, otherwise internal
@@ -83,7 +84,6 @@ export function CreateProductDialog({
   const { plan, isPro } = useSubscription()
   const [productCount, setProductCount] = useState(0)
   const [limitReached, setLimitReached] = useState(false)
-  const router = useRouter()
   
   useEffect(() => {
     async function checkLimit() {
@@ -212,13 +212,16 @@ export function CreateProductDialog({
       toast.success(productToEdit ? "Producto actualizado" : "Producto creado correctamente")
       
       if (setOpen) setOpen(false) // Safe call if using internal/external toggle
+      
+      // Invalidate TanStack Query cache so inventory & POS refresh automatically
+      await queryClient.invalidateQueries({ queryKey: ['products'] })
+      
       if (onSuccess) onSuccess()
       
       if (!productToEdit) {
           form.reset()
           setPreview(null)
       }
-      router.refresh()
     } catch (error) {
       console.error(error)
       toast.error(productToEdit ? "Error al actualizar" : "Error al crear el producto")
