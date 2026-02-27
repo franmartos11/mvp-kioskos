@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { RefreshCw, Search, Plus, Filter, MoreHorizontal, Pencil, Trash, PackageCheck, History as HistoryIcon, Image as ImageIcon } from "lucide-react";
-import { useProducts } from "@/hooks/use-products";
+import { useProducts, useInventoryProducts } from "@/hooks/use-products";
 import { supabase } from "@/utils/supabase/client";
 import { Product } from "@/types/inventory";
 import { CreateProductDialog } from "@/components/inventory/create-product-dialog";
@@ -53,14 +53,22 @@ export default function InventoryPage() {
   const [page, setPage] = useState(0)
   const ITEMS_PER_PAGE = 10
 
-  // Use TanStack Query
+  // Use TanStack Query - server-side search + pagination to bypass 1000 row Supabase limit
   const {
-    data: allProducts = [],
+    data: queryResult,
     isLoading: isQueryLoading,
     isError,
     error,
     refetch
-  } = useProducts(currentKiosk?.id)
+  } = useInventoryProducts(currentKiosk?.id, searchTerm, page, ITEMS_PER_PAGE)
+
+  const paginatedProducts = queryResult?.data ?? []
+  const totalCount = queryResult?.count ?? 0
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1
+
+  // Also load all products for bulk operations (CSV export, bulk price updates, etc.)
+  // This uses the separate useProducts hook that loads up to 5000 products
+  const { data: allProducts = [] } = useProducts(currentKiosk?.id)
 
   // Price List View State
   const [priceLists, setPriceLists] = useState<PriceList[]>([])
@@ -86,31 +94,15 @@ export default function InventoryPage() {
 
   useEffect(() => {
     if (isError && error) {
-      toast.error("Error al cargar productos: " + error.message)
+      toast.error("Error al cargar productos: " + (error as any).message)
     }
   }, [isError, error])
 
 
-
-  // Filter products client-side for search
-  const filteredProducts = allProducts.filter(product => {
-    if (!searchTerm) return true
-    const searchLower = searchTerm.toLowerCase()
-    return (
-      product.name.toLowerCase().includes(searchLower) ||
-      (product.barcode?.toLowerCase() ?? '').includes(searchLower) ||
-      ((product as any).category?.name?.toLowerCase() ?? '').includes(searchLower)
-    )
-  })
-
-  // Client-side pagination
-  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE) || 1
-  // Clamp page to valid range to prevent empty slices after search
-  const currentPage = Math.min(page, Math.max(0, totalPages - 1))
-  const paginatedProducts = filteredProducts.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE
-  )
+  // When search changes, reset to page 0
+  useEffect(() => {
+    setPage(0)
+  }, [searchTerm])
 
   // Determine user role
   const isOwner = currentKiosk?.role === 'owner'
@@ -147,11 +139,11 @@ export default function InventoryPage() {
   const toggleAll = (checked: boolean) => {
     if (checked) {
       const newSelected = new Set(selectedProducts);
-      filteredProducts.forEach(p => newSelected.add(p.id));
+      paginatedProducts.forEach(p => newSelected.add(p.id));
       setSelectedProducts(newSelected);
     } else {
       const newSelected = new Set(selectedProducts);
-      filteredProducts.forEach(p => newSelected.delete(p.id));
+      paginatedProducts.forEach(p => newSelected.delete(p.id));
       setSelectedProducts(newSelected);
     }
   };
@@ -357,7 +349,7 @@ export default function InventoryPage() {
                     Cargando productos...
                   </TableCell>
                 </TableRow>
-              ) : filteredProducts.length === 0 ? (
+              ) : paginatedProducts.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={isOwner ? 9 : 8} className="h-24 text-center">
                     No hay productos cargados o coincidencia.
@@ -447,18 +439,18 @@ export default function InventoryPage() {
           variant="outline"
           size="sm"
           onClick={() => setPage((p) => Math.max(0, p - 1))}
-          disabled={currentPage === 0 || isLoading}
+          disabled={page === 0 || isLoading}
         >
           Anterior
         </Button>
         <div className="text-sm text-muted-foreground">
-          Página {currentPage + 1} de {totalPages} ({filteredProducts.length} productos)
+          Página {page + 1} de {totalPages} ({totalCount} productos)
         </div>
         <Button
           variant="outline"
           size="sm"
           onClick={() => setPage((p) => Math.min(p + 1, totalPages - 1))}
-          disabled={currentPage + 1 >= totalPages || isLoading}
+          disabled={page + 1 >= totalPages || isLoading}
         >
           Siguiente
         </Button>
