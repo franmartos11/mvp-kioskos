@@ -4,6 +4,7 @@ import { InviteSellerDialog } from "@/components/employees/invite-seller-dialog"
 import { EmployeesList } from "@/components/employees/employees-list"
 import { ShiftLogger } from "@/components/employees/shift-logger"
 import { ShiftCalendar } from "@/components/employees/shift-calendar"
+import { PendingInvitationsList } from "@/components/employees/pending-invitations-list"
 
 export default async function EmployeesPage() {
   const supabase = await createClient()
@@ -41,14 +42,9 @@ export default async function EmployeesPage() {
   
   let employees: any[] = []
   let shifts: any[] = []
+  let pendingInvitations: any[] = []
 
   if (kioskIds.length > 0) {
-
-      
-      // Better strategy:
-      // 1. Fetch Sellers (kiosk_members)
-      // 2. Fetch Employee Details (employees table) for these kiosks
-      // 3. Merge in Javascript.
       
       // 1. Fetch Members (Sellers)
       const { data: sellers } = await supabase
@@ -56,6 +52,17 @@ export default async function EmployeesPage() {
         .select('*')
         .in('kiosk_id', kioskIds)
         // .eq('role', 'seller') // Keep implicit for now or add back if owners shouldn't be here
+
+      // Also Fetch Pending Invitations
+      const { data: invites } = await supabase
+        .from('kiosk_invitations')
+        .select('*')
+        .in('kiosk_id', kioskIds)
+        .eq('status', 'pending')
+        
+      if (invites) {
+          pendingInvitations = invites
+      }
 
       const userIds = (sellers || []).map((s: any) => s.user_id)
 
@@ -82,14 +89,6 @@ export default async function EmployeesPage() {
             .in('kiosk_id', kioskIds)
           
           details?.forEach((d: any) => {
-              // unique key per user+kiosk ideally, but here we scan by user. 
-              // If user is in multiple kiosks, this simple map might be ambiguous, 
-              // but we are usually filtering by current kiosks context.
-              // Let's key by user_id for simplicity or compound? 
-              // `d.user_id` is unique per kiosk in `employees` schema.
-              // But here we might list multiple kiosks.
-              // Let's key by `${d.user_id}-${d.kiosk_id}` logic if needed, 
-              // or just find in the map loop.
               employeesDetailsMap[`${d.user_id}-${d.kiosk_id}`] = d
           })
       }
@@ -168,11 +167,20 @@ export default async function EmployeesPage() {
       {/* Calendar / Schedules Section */}
       <ShiftCalendar employees={employees} schedules={schedules} shifts={shifts} />
 
+      {/* Pending Invitations Section */}
+      {pendingInvitations.length > 0 && (
+          <div className="mt-8">
+              <h2 className="text-xl font-semibold mb-4 text-muted-foreground">Invitaciones Pendientes</h2>
+              <PendingInvitationsList invitations={pendingInvitations} />
+          </div>
+      )}
+
       {/* List Section */}
-      <div>
+      <div className="mt-8">
           <h2 className="text-xl font-semibold mb-4">Listado de Personal</h2>
           <EmployeesList employees={employees} userId={user.id} />
       </div>
     </div>
   )
 }
+

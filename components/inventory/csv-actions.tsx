@@ -61,8 +61,6 @@ export function CsvActions({ products, kioskId }: { products: Product[], kioskId
         const rawCost = row.cost || row.Costo || row.costo || row.COSTO || row['Costo unitario'] || row['costo unitario'] || row['Costo Unitario'] || "0"
         const rawStock = row.stock || row.Stock || row.stock || row.STOCK || row.Cant || row["Cant."] || "0"
         const categoryName = getCategory(row)
-        const description = row.description || row.Notas || row.notas || row.description || null
-
         return { 
           name: rawName, 
           barcode: rawBarcode, 
@@ -70,7 +68,6 @@ export function CsvActions({ products, kioskId }: { products: Product[], kioskId
           cost: cleanNumber(rawCost), 
           stock: parseInt(cleanNumber(rawStock).toString(), 10) || 0, 
           categoryName, 
-          description, 
           is_weighable: row.is_weighable === true || row.is_weighable === 'true' || row.Pesable === true || row.Pesable === 'true' || false,
           kiosk_id: kioskId 
         }
@@ -111,15 +108,41 @@ export function CsvActions({ products, kioskId }: { products: Product[], kioskId
         return
       }
 
-      const { error } = await supabase.from("products").insert(productsToInsert)
+      // Split: upsert products WITH barcode (requires unique constraint on kiosk_id,barcode)
+      // and plain insert products WITHOUT barcode
+      const withBarcode = productsToInsert.filter(p => p.barcode)
+      const withoutBarcode = productsToInsert.filter(p => !p.barcode)
+
+      let error = null
+
+      if (withBarcode.length > 0) {
+        const { error: upsertError } = await supabase.from("products").upsert(withBarcode, {
+          onConflict: 'kiosk_id,barcode',
+          ignoreDuplicates: false
+        })
+        if (upsertError) error = upsertError
+      }
+
+      if (!error && withoutBarcode.length > 0) {
+        const { error: insertError } = await supabase.from("products").insert(withoutBarcode)
+        if (insertError) error = insertError
+      }
 
       if (error) throw error
 
       toast.success(`${productsToInsert.length} productos importados correctamente`)
       router.refresh()
-    } catch (error) {
-      console.error(error)
-      toast.error("Error al importar productos")
+    } catch (error: any) {
+      // Log all error details - Supabase errors have non-enumerable properties
+      console.error('CSV Import Error:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+        raw: error
+      })
+      const msg = error?.message || error?.details || 'Error desconocido'
+      toast.error(`Error al importar: ${msg}`)
     } finally {
       setIsImporting(false)
     }

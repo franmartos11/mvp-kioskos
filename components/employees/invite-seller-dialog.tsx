@@ -8,13 +8,14 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { supabase } from "@/utils/supabase/client"
 import { toast } from "sonner"
-import { Loader2, UserPlus, Search } from "lucide-react"
+import { Loader2, UserPlus, Search, Mail } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useKiosk } from "@/components/providers/kiosk-provider"
 import { useSubscription } from "@/hooks/use-subscription"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import Link from "next/link"
 import { ShieldAlert } from "lucide-react"
+import { inviteUser } from "@/app/actions/invitations"
 
 interface Kiosk {
   id: string
@@ -36,6 +37,7 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
   const [kioskId, setKioskId] = useState(kiosks[0]?.id || "")
   const [hourlyRate, setHourlyRate] = useState("")
   const [foundUser, setFoundUser] = useState<any>(null)
+  const [searchAttempted, setSearchAttempted] = useState(false)
 
   const { plan, isEnterprise } = useSubscription()
   const [employeeCount, setEmployeeCount] = useState(0)
@@ -48,18 +50,6 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
       return null
   }
 
-  // Fetch count when opening
-  // We can use a simple effect.
-  // Note: Open state is local, so we depend on `open` if we had access, but here open is inside component?
-  // Ah, `open` is state.
-  
-  // We need to fetch count of sellers for this user/kiosk owner.
-  // The 'kiosks' prop contains all kiosks where user is owner.
-  // So we count members in these kiosks.
-  
-  // Wait, useEffect should run when dialog opens. 
-  // Let's rely on checking when the component mounts or when `open` changes.
-  
   const checkLimit = async () => {
     if (isEnterprise) return // Unlimited
 
@@ -84,11 +74,6 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
     }
   }
   
-  // Monitor open state changes? or just fetch once?
-  // Ideally we use text of button to show "Limit Reached" or disable it?
-  // Or show Alert inside content.
-  
-  // Since `open` is controlled locally, we can hook into onOpenChange or just run effect.
   if (open && !limitReached && !isEnterprise) {
       checkLimit()
   }
@@ -97,6 +82,7 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
     if (!email) return
     setLoading(true)
     setFoundUser(null)
+    setSearchAttempted(false)
 
     try {
         const { data, error } = await supabase
@@ -105,8 +91,10 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
             .eq('email', email.trim())
             .single()
 
+        setSearchAttempted(true)
+
         if (error || !data) {
-            toast.error("Usuario no encontrado")
+            toast.error("Usuario no encontrado en la plataforma")
         } else {
             setFoundUser(data)
             toast.success("Usuario encontrado: " + (data.full_name || data.email))
@@ -118,7 +106,7 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
     }
   }
 
-  const handleInvite = async () => {
+  const handleAddExistingUser = async () => {
     if (!foundUser || !kioskId) return
     setLoading(true)
 
@@ -138,11 +126,9 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
           } else {
               throw memberError
           }
-          // Proceed to check/create employee record anyway?
       }
 
       // 2. Add Employee Details (Rate)
-      // Check if exists first? Or upsert.
       const { error: empError } = await supabase
         .from('employees')
         .upsert({
@@ -154,14 +140,7 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
       if (empError) throw empError
 
       toast.success("Vendedor agregado correctamente")
-      setOpen(false)
-      setEmail("")
-      setHourlyRate("")
-      setFoundUser(null)
-      
-      router.refresh()
-      if (onAdded) onAdded()
-      
+      resetAndClose()
     } catch (error: any) {
       console.error(error)
       toast.error("Error al agregar vendedor: " + error.message)
@@ -170,8 +149,44 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
     }
   }
 
+  const handleSendInvite = async () => {
+    if (!email || !kioskId) return
+    setLoading(true)
+
+    try {
+        const res = await inviteUser(kioskId, email.trim(), 'seller')
+        if (res.success) {
+            toast.success("Invitación enviada correctamente")
+            resetAndClose()
+        } else {
+            toast.error(res.error || "Error al enviar la invitación")
+        }
+    } catch (error: any) {
+        toast.error("Error al enviar la invitación: " + error.message)
+    } finally {
+        setLoading(false)
+    }
+  }
+
+  const resetAndClose = () => {
+      setOpen(false)
+      setEmail("")
+      setHourlyRate("")
+      setFoundUser(null)
+      setSearchAttempted(false)
+      router.refresh()
+      if (onAdded) onAdded()
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(val) => {
+        setOpen(val)
+        if (!val) {
+            setEmail("")
+            setFoundUser(null)
+            setSearchAttempted(false)
+        }
+    }}>
       <DialogTrigger asChild>
         <Button className="gap-2">
           <UserPlus className="h-4 w-4" />
@@ -221,7 +236,11 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
                 <div className="flex gap-2">
                     <Input 
                         value={email}
-                        onChange={e => setEmail(e.target.value)}
+                        onChange={e => {
+                            setEmail(e.target.value)
+                            setSearchAttempted(false)
+                            setFoundUser(null)
+                        }}
                         placeholder="email@ejemplo.com"
                     />
                     <Button onClick={handleSearch} disabled={loading || !email} size="icon">
@@ -230,31 +249,52 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
                 </div>
             </div>
 
-            {foundUser && (
-                <div className="p-3 bg-muted rounded-md text-sm">
-                    <p className="font-medium">{foundUser.full_name || "Sin nombre"}</p>
-                    <p className="text-muted-foreground">{foundUser.email}</p>
+            {searchAttempted && !foundUser && (
+                <div className="p-4 bg-yellow-50 text-yellow-800 rounded-md border border-yellow-200">
+                    <p className="text-sm font-medium mb-1">Usuario no encontrado</p>
+                    <p className="text-sm mb-3">El correo ingresado no pertenece a ninguna cuenta registrada. ¿Deseas enviarle una invitación por correo?</p>
+                    <Button 
+                        onClick={handleSendInvite} 
+                        disabled={loading} 
+                        variant="default" 
+                        size="sm"
+                        className="w-full gap-2"
+                    >
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                        Invitar por Email
+                    </Button>
                 </div>
             )}
 
-            <div className="space-y-2">
-                <Label>Valor Hora ($)</Label>
-                <Input 
-                    type="number"
-                    step="0.01"
-                    value={hourlyRate}
-                    onChange={e => setHourlyRate(e.target.value)}
-                    placeholder="0.00"
-                />
-            </div>
+            {searchAttempted && foundUser && (
+                <>
+                    <div className="p-3 bg-muted rounded-md text-sm border">
+                        <p className="font-medium text-green-700 mb-1">✓ Cuenta encontrada</p>
+                        <p className="font-semibold">{foundUser.full_name || "Sin nombre"}</p>
+                        <p className="text-muted-foreground">{foundUser.email}</p>
+                    </div>
 
-            <Button onClick={handleInvite} className="w-full" disabled={loading || !foundUser}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Confirmar y Agregar
-            </Button>
+                    <div className="space-y-2">
+                        <Label>Valor Hora ($)</Label>
+                        <Input 
+                            type="number"
+                            step="0.01"
+                            value={hourlyRate}
+                            onChange={e => setHourlyRate(e.target.value)}
+                            placeholder="0.00"
+                        />
+                    </div>
+
+                    <Button onClick={handleAddExistingUser} className="w-full" disabled={loading}>
+                        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Agregar Vendedor
+                    </Button>
+                </>
+            )}
         </div>
         )}
       </DialogContent>
     </Dialog>
   )
 }
+
