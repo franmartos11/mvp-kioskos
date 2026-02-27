@@ -44,7 +44,7 @@ interface ProductDetailsDialogProps {
 
 export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpdated }: ProductDetailsDialogProps) {
   const { currentKiosk } = useKiosk()
-  const p = currentKiosk?.permissions || { view_costs: false, manage_products: false } as any
+  const p = currentKiosk?.permissions ?? { view_costs: false, manage_products: false, view_finance: false, manage_stock: false, manage_members: false, view_dashboard: false, view_reports: false }
 
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)

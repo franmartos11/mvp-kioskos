@@ -37,8 +37,8 @@ export function OverviewStats({ userId, initialData, dateRange }: OverviewStatsP
         : "Últimos 30 días"
 
     // Helper to titling
-    const { currentKiosk } = useKiosk()
-    const permissions = currentKiosk?.permissions
+    const { currentKiosk, isLoading: isKioskLoading } = useKiosk()
+    const permissions = currentKiosk?.permissions ?? { view_finance: false }
 
     // Sanitize stats to prevent NaN from raw initialData
     const safeStats = {
@@ -54,7 +54,7 @@ export function OverviewStats({ userId, initialData, dateRange }: OverviewStatsP
         topProducts: stats?.topProducts || []
     }
 
-    if (loading || !stats) {
+    if (loading || isKioskLoading || !stats) {
         // ... (existing loader logic is fine, maybe update if needed but keeping it simple for now)
         return (
             <div className="space-y-4">

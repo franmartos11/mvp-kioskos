@@ -26,18 +26,13 @@ export function MainNav({ className, ...props }: React.HTMLAttributes<HTMLElemen
   const { currentKiosk } = useKiosk()
   
   const isOwner = currentKiosk?.role === 'owner'
-  // Owners always have full access regardless of the permissions field in the DB
-  const p = isOwner ? {
-      view_dashboard: true,
-      view_finance: true,
-      manage_members: true,
-      view_reports: true,
-  } : (currentKiosk?.permissions || {
+  // Permissions come from the provider — owners always have all true, sellers use stored values
+  const p = currentKiosk?.permissions ?? {
       view_dashboard: false,
       view_finance: false,
       manage_members: false,
       view_reports: false,
-  })
+  }
 
   return (
     <nav

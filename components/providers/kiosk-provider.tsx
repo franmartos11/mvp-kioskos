@@ -81,12 +81,34 @@ export function KioskProvider({ children }: { children: React.ReactNode }) {
             .eq('user_id', user.id)
 
         if (members) {
-            const kiosks: Kiosk[] = members.map((m: any) => ({
-                id: m.kiosk.id,
-                name: m.kiosk.name,
-                role: m.role,
-                permissions: m.permissions || {} 
-            }))
+            const kiosks: Kiosk[] = members.map((m: any) => {
+                const isOwner = m.role === 'owner'
+                const fullPermissions: KioskPermissions = {
+                    view_dashboard: true,
+                    view_finance: true,
+                    manage_products: true,
+                    view_costs: true,
+                    manage_stock: true,
+                    manage_members: true,
+                    view_reports: true,
+                }
+                const sellerPermissions: KioskPermissions = {
+                    view_dashboard: false,
+                    view_finance: false,
+                    manage_products: false,
+                    view_costs: false,
+                    manage_stock: false,
+                    manage_members: false,
+                    view_reports: false,
+                    ...(m.permissions || {})
+                }
+                return {
+                    id: m.kiosk.id,
+                    name: m.kiosk.name,
+                    role: m.role,
+                    permissions: isOwner ? fullPermissions : sellerPermissions
+                }
+            })
             
             setAllKiosks(kiosks)
 
