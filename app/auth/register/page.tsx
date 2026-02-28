@@ -58,7 +58,7 @@ function RegisterAsSellerForm() {
 
       // If there's an invite token in the URL, use it directly
       if (isInviteFlow && inviteToken) {
-        router.push(`/api/invite/accept?token=${inviteToken}`)
+        router.push(`/invite/accept?token=${inviteToken}`)
       } else {
         router.push("/dashboard")
         router.refresh()

@@ -54,7 +54,7 @@ export default async function InvitePage({
               </Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link href={`/login?email=${encodeURIComponent(invitation.email)}&redirect=${encodeURIComponent(`/api/invite/accept?token=${token}`)}`}>
+              <Link href={`/login?email=${encodeURIComponent(invitation.email)}&redirect=${encodeURIComponent(`/invite/accept?token=${token}`)}`}>
                 Ya tengo cuenta, Iniciar Sesión
               </Link>
             </Button>
