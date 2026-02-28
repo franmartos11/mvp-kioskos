@@ -1,7 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { cookies } from 'next/headers'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { validateInvitationToken } from '../actions/invitations'
@@ -25,14 +24,6 @@ export default async function InvitePage({
 
   const { invitation } = result
   
-  // Save the valid token in a cookie to claim it after registration/login
-  const cookieStore = await cookies()
-  cookieStore.set('kiosk_invite_token', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 60 * 60 * 24 // 24 hours
-  })
-
   // Check if they are already logged in
   const supabase = await createClient()
   const { data: { session } } = await supabase.auth.getSession()
@@ -58,12 +49,12 @@ export default async function InvitePage({
           </p>
           <div className="flex flex-col gap-2">
             <Button asChild>
-              <Link href={`/auth/register?email=${encodeURIComponent(invitation.email)}`}>
+              <Link href={`/auth/register?email=${encodeURIComponent(invitation.email)}&invite_token=${token}`}>
                 Crear nueva cuenta
               </Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link href={`/login?email=${encodeURIComponent(invitation.email)}&redirect=/api/invite/accept`}>
+              <Link href={`/login?email=${encodeURIComponent(invitation.email)}&redirect=${encodeURIComponent(`/api/invite/accept?token=${token}`)}`}>
                 Ya tengo cuenta, Iniciar Sesión
               </Link>
             </Button>

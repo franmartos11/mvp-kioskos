@@ -15,6 +15,7 @@ import { ArrowLeft } from "lucide-react"
 function RegisterAsSellerForm() {
   const searchParams = useSearchParams()
   const initialEmail = searchParams.get("email") || ""
+  const inviteToken = searchParams.get("invite_token") || ""
   const router = useRouter()
 
   const [fullName, setFullName] = useState("")
@@ -22,7 +23,7 @@ function RegisterAsSellerForm() {
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
 
-  const isInviteFlow = !!initialEmail
+  const isInviteFlow = !!initialEmail && !!inviteToken
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -55,10 +56,9 @@ function RegisterAsSellerForm() {
 
       toast.success("¡Cuenta creada! Procesando invitación...")
 
-      // If there's an invite cookie, process it via the accept route
-      if (isInviteFlow) {
-        // The cookie was already set by /invite page
-        router.push("/api/invite/accept")
+      // If there's an invite token in the URL, use it directly
+      if (isInviteFlow && inviteToken) {
+        router.push(`/api/invite/accept?token=${inviteToken}`)
       } else {
         router.push("/dashboard")
         router.refresh()

@@ -3,8 +3,11 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 
 export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
   const cookieStore = await cookies()
-  const token = cookieStore.get('kiosk_invite_token')?.value
+  
+  // Token comes from URL param (primary) or cookie (legacy fallback)
+  const token = searchParams.get('token') || cookieStore.get('kiosk_invite_token')?.value
 
   if (!token) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
