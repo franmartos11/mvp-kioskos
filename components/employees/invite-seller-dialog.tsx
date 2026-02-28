@@ -93,11 +93,15 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
 
         setSearchAttempted(true)
 
-        if (error || !data) {
-            toast.error("Usuario no encontrado en la plataforma")
+        // Treat profiles without a name as ghost/incomplete accounts → show invite flow
+        if (error || !data || !data.full_name) {
+            setFoundUser(null)
+            if (!error && data && !data.full_name) {
+                toast.info("El correo existe pero la cuenta no está configurada. Podés invitarlo igualmente.")
+            }
         } else {
             setFoundUser(data)
-            toast.success("Usuario encontrado: " + (data.full_name || data.email))
+            toast.success("Usuario encontrado: " + data.full_name)
         }
     } catch (e) {
         toast.error("Error al buscar usuario")
@@ -250,9 +254,9 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
             </div>
 
             {searchAttempted && !foundUser && (
-                <div className="p-4 bg-yellow-50 text-yellow-800 rounded-md border border-yellow-200">
-                    <p className="text-sm font-medium mb-1">Usuario no encontrado</p>
-                    <p className="text-sm mb-3">El correo ingresado no pertenece a ninguna cuenta registrada. ¿Deseas enviarle una invitación por correo?</p>
+                <div className="p-4 bg-blue-50 text-blue-900 rounded-md border border-blue-200">
+                    <p className="text-sm font-medium mb-1">📧 Invitar por email</p>
+                    <p className="text-sm mb-3">Se le enviará un correo a <strong>{email}</strong> con un enlace para unirse al kiosco. Si no tiene cuenta, podrá crear una gratuitamente.</p>
                     <Button 
                         onClick={handleSendInvite} 
                         disabled={loading} 
@@ -261,7 +265,7 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
                         className="w-full gap-2"
                     >
                         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-                        Invitar por Email
+                        Enviar Invitación
                     </Button>
                 </div>
             )}
