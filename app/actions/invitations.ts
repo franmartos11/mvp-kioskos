@@ -50,14 +50,14 @@ export async function inviteUser(kioskId: string, email: string, role: string) {
       .single()
     const kioskName = kioskData?.name || 'el Kiosco'
 
-    // 4. Build invite link — goes to /invite page which handles new & existing users
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    // 4. Build invite link pointing to production
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://mvp-kioskos.vercel.app'
     const inviteLink = `${siteUrl}/invite?token=${token}`
     const roleLabel = role === 'owner' ? 'Dueño' : 'Vendedor'
 
     // 5. Send email via Resend (no rate limits like Supabase SMTP)
     const { error: emailError } = await resend.emails.send({
-      from: 'KioskApp <onboarding@resend.dev>',
+      from: 'KioskApp <noreply@aspasoftware.com>',
       to: email,
       subject: `Te invitaron a unirte a ${kioskName}`,
       html: `
