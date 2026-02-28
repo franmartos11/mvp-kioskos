@@ -8,9 +8,9 @@ import { validateInvitationToken } from '../actions/invitations'
 export default async function InvitePage({
   searchParams,
 }: {
-  searchParams: { token: string }
+  searchParams: Promise<{ token?: string }>
 }) {
-  const token = searchParams.token
+  const { token } = await searchParams
 
   if (!token) {
     return <InvalidInviteMessage message="Falta el token de invitación." />
