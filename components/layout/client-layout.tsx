@@ -13,6 +13,7 @@ export function ClientLayout({ children }: ClientLayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
   const isPublicPage = pathname === "/" || pathname === "/login" || pathname === "/register"
+    || pathname.startsWith("/invite") || pathname.startsWith("/auth")
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {

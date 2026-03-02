@@ -30,11 +30,17 @@ function RegisterAsSellerForm() {
     setLoading(true)
 
     try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://mvp-kioskos.vercel.app'
+      const emailRedirectTo = isInviteFlow
+        ? `${siteUrl}/invite/accept?token=${inviteToken}`
+        : `${siteUrl}/pos`
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { full_name: fullName }
+          data: { full_name: fullName },
+          emailRedirectTo,
         }
       })
 
@@ -54,14 +60,14 @@ function RegisterAsSellerForm() {
         return
       }
 
-      toast.success("¡Cuenta creada! Procesando invitación...")
-
-      // If there's an invite token in the URL, use it directly
+      // If there's an invite token, guide the user to confirm their email first.
+      // Supabase will redirect to /invite/accept?token=... automatically after confirmation.
       if (isInviteFlow && inviteToken) {
-        router.push(`/invite/accept?token=${inviteToken}`)
+        toast.success("¡Cuenta creada! Revisá tu email para confirmar tu cuenta y aceptar la invitación.")
+        // Don't navigate away — let the user see the success message
       } else {
-        router.push("/dashboard")
-        router.refresh()
+        toast.success("¡Cuenta creada! Revisá tu email para confirmar tu cuenta.")
+        router.push("/login")
       }
     } catch (error) {
       toast.error("Ocurrió un error inesperado")
@@ -158,7 +164,7 @@ function RegisterAsSellerForm() {
           <div className="mt-4 text-center text-sm text-muted-foreground">
             ¿Ya tenés cuenta?{" "}
             <Link
-              href={isInviteFlow ? `/login?email=${encodeURIComponent(email)}&redirect=/api/invite/accept` : "/login"}
+              href={isInviteFlow ? `/login?email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(`/invite/accept?token=${inviteToken}`)}` : "/login"}
               className="font-semibold text-primary hover:underline"
             >
               Iniciar sesión

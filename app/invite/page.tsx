@@ -29,8 +29,8 @@ export default async function InvitePage({
   const { data: { session } } = await supabase.auth.getSession()
 
   if (session) {
-    // If logged in, redirect them to accept the invite via an API route
-    redirect('/api/invite/accept')
+    // If logged in, redirect them to accept the invite via an API route (must include token)
+    redirect(`/api/invite/accept?token=${token}`)
   }
 
   // Not logged in -> go to a specialized registration/login path

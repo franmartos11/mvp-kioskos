@@ -23,14 +23,15 @@ function LoginPageContent() {
   const router = useRouter()
 
   useEffect(() => {
+    const redirectTo = searchParams.get("redirect") || "/dashboard"
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) {
-        router.push("/dashboard")
+        router.push(redirectTo)
       } else {
         setCheckingAuth(false)
       }
     })
-  }, [router])
+  }, [router, searchParams])
 
   if (checkingAuth) {
     return <div className="min-h-screen flex items-center justify-center">Cargando...</div>
