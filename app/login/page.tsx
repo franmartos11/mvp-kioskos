@@ -18,7 +18,6 @@ function LoginPageContent() {
   const defaultEmail = searchParams.get("email") || ""
   const redirectTo = searchParams.get("redirect") || "/dashboard"
 
-  const [isLogin, setIsLogin] = useState(true)
   const [checkingAuth, setCheckingAuth] = useState(true)
   const router = useRouter()
 
@@ -60,27 +59,23 @@ function LoginPageContent() {
           </div>
           <CardTitle className="text-3xl font-bold text-primary">KioskApp</CardTitle>
           <CardDescription className="text-base">
-            {isLogin ? "Inicia sesión para continuar" : "Registra tu negocio y comienza"}
+            Inicia sesión para continuar
           </CardDescription>
         </CardHeader>
 
         <CardContent>
-          {isLogin
-            ? <LoginForm defaultEmail={defaultEmail} redirectTo={redirectTo} />
-            : <RegisterOwnerForm />
-          }
+          <LoginForm defaultEmail={defaultEmail} redirectTo={redirectTo} />
         </CardContent>
 
         <CardFooter className="flex flex-col gap-4 border-t pt-6 bg-muted/20 rounded-b-lg">
           <div className="text-sm text-center text-muted-foreground w-full flex items-center justify-center gap-2">
-            <span>{isLogin ? "¿No tienes cuenta?" : "¿Ya tienes cuenta?"}</span>
-            <Button
-              variant="link"
-              className="p-0 h-auto font-semibold"
-              onClick={() => setIsLogin(!isLogin)}
+            <span>¿No tienes cuenta?</span>
+            <Link
+              href="/auth/register"
+              className="font-semibold text-primary hover:underline hover:text-primary transition-colors"
             >
-              {isLogin ? "Regístrate gratis" : "Inicia sesión"}
-            </Button>
+              Regístrate gratis
+            </Link>
           </div>
         </CardFooter>
       </Card>
@@ -146,102 +141,6 @@ function LoginForm({ defaultEmail = "", redirectTo = "/dashboard" }: { defaultEm
       <Button className="w-full" type="submit" disabled={loading}>
         {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         Ingresar
-      </Button>
-    </form>
-  )
-}
-
-// --- Register Form (for kiosk owners) ---
-function RegisterOwnerForm() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [kioskName, setKioskName] = useState("")
-  const [loading, setLoading] = useState(false)
-  const router = useRouter()
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({ email, password })
-      if (authError) {
-        toast.error("Error al registrarse: " + authError.message)
-        return
-      }
-      if (!authData.user) {
-        toast.error("No se pudo crear el usuario")
-        return
-      }
-      if (authData.user.identities && authData.user.identities.length === 0) {
-        toast.error("Este email ya está registrado. Por favor inicia sesión.")
-        return
-      }
-
-      const { error: kioskError } = await supabase.rpc('create_initial_kiosk', {
-        p_kiosk_name: kioskName,
-        p_owner_id: authData.user.id
-      })
-
-      if (kioskError) {
-        toast.error("Usuario creado, pero hubo error al crear el Kiosco. " + kioskError.message)
-        return
-      }
-
-      toast.success("¡Cuenta y Kiosco creados con éxito!")
-
-      if (authData.session) {
-        router.push("/dashboard")
-        router.refresh()
-      } else {
-        toast.info("Por favor confirma tu email para iniciar sesión.", { duration: 6000 })
-        router.push("/login")
-      }
-    } catch (error) {
-      toast.error("Ocurrió un error inesperado")
-      console.error(error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <form onSubmit={handleRegister} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="kioskName">Nombre del Kiosco / Negocio</Label>
-        <Input
-          id="kioskName"
-          type="text"
-          placeholder="Ej. Kiosco Pepe"
-          value={kioskName}
-          onChange={(e) => setKioskName(e.target.value)}
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="reg-email">Email</Label>
-        <Input
-          id="reg-email"
-          type="email"
-          placeholder="tu@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="reg-password">Contraseña</Label>
-        <Input
-          id="reg-password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength={6}
-        />
-      </div>
-      <Button className="w-full" type="submit" disabled={loading}>
-        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Registrarse y Comenzar
       </Button>
     </form>
   )

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { OverviewStats } from "@/components/dashboard/overview-stats"
 import { KioskDetailView } from "@/components/dashboard/kiosk-detail-view"
+import { OnboardingWizard } from "@/components/dashboard/onboarding-wizard"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -12,6 +13,7 @@ import { addDays, subDays, startOfDay, endOfDay, startOfMonth, endOfMonth, forma
 import { es } from "date-fns/locale"
 import { DateRange } from "react-day-picker"
 import { cn } from "@/lib/utils"
+import { useSearchParams } from "next/navigation"
 
 interface Kiosk {
   id: string
@@ -28,6 +30,19 @@ interface DashboardClientProps {
 export function DashboardClient({ user, kiosks, initialStats }: DashboardClientProps) {
   const [selectedView, setSelectedView] = useState<string>("overview")
   const selectedKiosk = kiosks.find(k => k.id === selectedView)
+  const searchParams = useSearchParams()
+
+  // Onboarding wizard — show only on first visit (?onboarding=true AND not already completed)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const firstKiosk = kiosks[0]
+
+  useEffect(() => {
+    const shouldOnboard = searchParams.get("onboarding") === "true"
+    const alreadyDone = localStorage.getItem("onboarding_completed") === "true"
+    if (shouldOnboard && !alreadyDone && firstKiosk) {
+      setShowOnboarding(true)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   
   // Advanced Date Filter State
   const [period, setPeriod] = useState("month")
@@ -65,6 +80,14 @@ export function DashboardClient({ user, kiosks, initialStats }: DashboardClientP
   }, [period, customRange, customMonth])
 
   return (
+    <>
+      {firstKiosk && (
+        <OnboardingWizard
+          open={showOnboarding}
+          onClose={() => setShowOnboarding(false)}
+          kioskName={firstKiosk.name}
+        />
+      )}
     <div className="flex flex-col gap-6 p-4 w-full">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
@@ -183,5 +206,6 @@ export function DashboardClient({ user, kiosks, initialStats }: DashboardClientP
           )}
       </div>
     </div>
+    </>
   )
 }

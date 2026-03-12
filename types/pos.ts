@@ -5,7 +5,7 @@ export interface CartItem {
   quantity: number
 }
 
-export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'other'
+export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'other' | 'fiado'
 
 export interface Sale {
     id: string

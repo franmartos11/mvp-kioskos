@@ -1,9 +1,9 @@
 import { GeneralSettings } from "@/components/settings/general-settings"
 import { SubscriptionSettings } from "@/components/settings/subscription-settings"
-// import { PaymentHistory } from "@/components/settings/payment-history"
 import { BulkInvoicer } from "@/components/settings/bulk-invoicer"
 import { AfipSettings } from "@/components/settings/afip-settings"
 import { PriceListsManager } from "@/components/settings/price-lists-manager"
+import { PaymentSettings } from "@/components/settings/payment-settings"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function SettingsPage() {
@@ -21,6 +21,7 @@ export default function SettingsPage() {
                     <TabsTrigger value="billing">Facturación</TabsTrigger>
                     <TabsTrigger value="afip">ARCA / AFIP</TabsTrigger>
                     <TabsTrigger value="prices">Listas de Precio</TabsTrigger>
+                    <TabsTrigger value="payments">Medios de Pago</TabsTrigger>
                 </TabsList>
                 <TabsContent value="general" className="space-y-4">
                     <GeneralSettings />
@@ -37,7 +38,11 @@ export default function SettingsPage() {
                 <TabsContent value="prices" className="space-y-4">
                      <PriceListsManager />
                 </TabsContent>
+                <TabsContent value="payments" className="space-y-4">
+                    <PaymentSettings />
+                </TabsContent>
             </Tabs>
+
         </div>
     )
 }

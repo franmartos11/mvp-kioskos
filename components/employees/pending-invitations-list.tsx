@@ -1,7 +1,7 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Mail, Trash2, Clock } from "lucide-react"
+import { Mail, Trash2, Clock, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useKiosk } from "@/components/providers/kiosk-provider"
 import { formatDistanceToNow } from "date-fns"
@@ -28,6 +28,7 @@ interface Invitation {
   created_at: string
   expires_at: string
   kiosk_id: string
+  invite_code?: string
 }
 
 interface PendingInvitationsListProps {
@@ -37,6 +38,7 @@ interface PendingInvitationsListProps {
 export function PendingInvitationsList({ invitations }: PendingInvitationsListProps) {
   const { currentKiosk } = useKiosk()
   const [isCancelling, setIsCancelling] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   if (!currentKiosk) return null
   const isOwner = currentKiosk.role === 'owner'
@@ -63,6 +65,14 @@ export function PendingInvitationsList({ invitations }: PendingInvitationsListPr
     }
   }
 
+  const handleCopyCode = (inviteId: string, code: string) => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopiedId(inviteId)
+      toast.success("Código copiado al portapapeles")
+      setTimeout(() => setCopiedId(null), 2000)
+    })
+  }
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {filteredInvites.map(invite => {
@@ -82,6 +92,27 @@ export function PendingInvitationsList({ invitations }: PendingInvitationsListPr
                   <span className="font-medium">{invite.email}</span>
                 </div>
               </div>
+
+              {/* Invite Code highlight */}
+              {invite.invite_code && (
+                <div className="mb-4 p-3 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider mb-0.5">Código de invitación</p>
+                    <p className="font-mono font-bold text-xl tracking-widest text-primary">{invite.invite_code}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                    onClick={() => handleCopyCode(invite.id, invite.invite_code!)}
+                  >
+                    {copiedId === invite.id
+                      ? <><Check className="h-3.5 w-3.5 text-green-500" /> Copiado</>
+                      : <><Copy className="h-3.5 w-3.5" /> Copiar</>
+                    }
+                  </Button>
+                </div>
+              )}
               
               <div className="grid grid-cols-2 gap-2 mb-4">
                 <div className="p-2 bg-muted/50 rounded flex flex-col">

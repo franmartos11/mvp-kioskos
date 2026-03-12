@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { supabase } from "@/utils/supabase/client"
 import { toast } from "sonner"
-import { Loader2, UserPlus, Search, Mail } from "lucide-react"
+import { Loader2, UserPlus, Search, Mail, Copy, Check, KeyRound } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useKiosk } from "@/components/providers/kiosk-provider"
 import { useSubscription } from "@/hooks/use-subscription"
@@ -49,6 +49,9 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
   if (!currentKiosk || currentKiosk.role !== 'owner') {
       return null
   }
+
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const checkLimit = async () => {
     if (isEnterprise) return // Unlimited
@@ -159,9 +162,10 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
 
     try {
         const res = await inviteUser(kioskId, email.trim(), 'seller')
-        if (res.success) {
+        if (res.success && res.inviteCode) {
             toast.success("Invitación enviada correctamente")
-            resetAndClose()
+            setGeneratedCode(res.inviteCode)
+            // Do NOT resetAndClose immediately — let the user copy the code
         } else {
             toast.error(res.error || "Error al enviar la invitación")
         }
@@ -172,12 +176,24 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
     }
   }
 
+  const handleCopyCode = () => {
+    if (generatedCode) {
+      navigator.clipboard.writeText(generatedCode).then(() => {
+        setCopied(true)
+        toast.success("Código copiado al portapapeles")
+        setTimeout(() => setCopied(false), 2000)
+      })
+    }
+  }
+
   const resetAndClose = () => {
       setOpen(false)
       setEmail("")
       setHourlyRate("")
       setFoundUser(null)
       setSearchAttempted(false)
+      setGeneratedCode(null)
+      setCopied(false)
       router.refresh()
       if (onAdded) onAdded()
   }
@@ -218,6 +234,47 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
                         <Button>Mejorar Plan</Button>
                     </Link>
                 </div>
+            </div>
+        ) : generatedCode ? (
+            <div className="space-y-6 py-4 animate-in fade-in zoom-in duration-300">
+                <div className="text-center space-y-2">
+                    <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4 text-green-600">
+                        <Check className="h-6 w-6" />
+                    </div>
+                    <h3 className="text-lg font-bold">Invitación Enviada</h3>
+                    <p className="text-sm text-muted-foreground">
+                        Se envió un correo a <strong>{email}</strong> con un enlace para unirse.
+                    </p>
+                </div>
+
+                <div className="space-y-2 border rounded-lg p-4 bg-muted/30">
+                    <Label className="text-xs text-muted-foreground uppercase flex items-center justify-center gap-1.5 font-bold mb-2">
+                        <KeyRound className="h-3.5 w-3.5" />
+                        O compartí este código:
+                    </Label>
+                    <div className="flex gap-2">
+                        <Input
+                            readOnly
+                            value={generatedCode}
+                            className="font-mono text-center text-xl tracking-widest uppercase bg-transparent border-primary/20 text-primary font-bold"
+                        />
+                        <Button
+                            variant="default"
+                            size="icon"
+                            onClick={handleCopyCode}
+                            className="shrink-0 w-10"
+                        >
+                            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                    </div>
+                    <p className="text-xs text-center text-muted-foreground mt-2">
+                        El vendedor puede usar este código al registrarse o iniciar sesión.
+                    </p>
+                </div>
+
+                <Button className="w-full" onClick={resetAndClose}>
+                    Cerrar
+                </Button>
             </div>
         ) : (
         <div className="space-y-4">

@@ -45,12 +45,26 @@ function AcceptInviteContent() {
         const res = await fetch(`/api/invite/accept?token=${token}`, {
           method: "GET",
           credentials: "include",
-          redirect: "follow",
+          redirect: "manual", // Don't follow redirects automatically — check response first
         })
-        // Redirect to POS on success
-        router.replace("/pos")
+
+        // The server redirects (3xx) on success, returns error page URL on failure.
+        // A 3xx status (or 0 for opaque redirects) means the invite was processed.
+        if (res.type === "opaqueredirect" || res.status === 302 || res.ok) {
+          router.replace("/pos")
+        } else {
+          // Try to extract error message from redirect URL if present
+          let msg = "Error al procesar la invitación."
+          try {
+            const location = res.headers.get("location") || ""
+            const errorParam = new URL(location, window.location.origin).searchParams.get("error")
+            if (errorParam) msg = decodeURIComponent(errorParam)
+          } catch {}
+          setErrorMsg(msg)
+          setStatus("error")
+        }
       } catch (e) {
-        setErrorMsg("Ocurrió un error al procesar la invitación.")
+        setErrorMsg("Ocurrió un error de red al procesar la invitación.")
         setStatus("error")
       }
     }

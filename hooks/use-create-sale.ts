@@ -10,6 +10,7 @@ interface CreateSaleVariables {
   userId: string
   method: PaymentMethod
   customerName?: string
+  customerId?: string | null     // ← NEW: for fiado
   activePriceList?: { id: string, name: string } | null
 }
 
@@ -17,7 +18,7 @@ export function useCreateSale() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ cart, kioskId, userId, method, customerName, activePriceList }: CreateSaleVariables) => {
+    mutationFn: async ({ cart, kioskId, userId, method, customerName, customerId, activePriceList }: CreateSaleVariables) => {
         // 1. Create Sale
         const total = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)
         
@@ -29,6 +30,7 @@ export function useCreateSale() {
                 kiosk_id: kioskId,
                 user_id: userId,
                 customer_name: customerName || null,
+                customer_id: customerId || null,         // ← NEW
                 metadata: activePriceList ? { price_list: activePriceList } : {}
             })
             .select()
@@ -53,14 +55,12 @@ export function useCreateSale() {
         if (itemsError) throw itemsError
 
         // 3. Update Stock
-        // Using a loop for now (or could use an RPC if strict atomicity needed)
         for (const item of cart) {
             const { error: stockError } = await supabase.rpc('decrement_stock', { 
                 p_product_id: item.product.id, 
                 p_quantity: item.quantity 
             })
             
-            // Fallback to normal update if RPC doesn't exist (it should, but safety first)
             if (stockError) {
                  const newStock = item.product.stock - item.quantity
                  await supabase
@@ -69,17 +69,30 @@ export function useCreateSale() {
                     .eq('id', item.product.id)
             }
         }
+
+        // 4. ← NEW: If fiado, register the debt charge via RPC
+        if (method === 'fiado' && customerId) {
+            const { error: debtError } = await supabase.rpc('record_debt_charge', {
+                p_kiosk_id: kioskId,
+                p_customer_id: customerId,
+                p_amount: total,
+                p_description: `Venta #${sale.id.slice(0, 8)} — ${cart.map(i => i.product.name).join(', ')}`
+            })
+
+            if (debtError) {
+                console.error('[useCreateSale] Debt charge error:', debtError)
+                // Non-fatal: sale is already registered, just log the error
+                toast.warning('Venta registrada, pero no se pudo actualizar la cuenta corriente del cliente.')
+            }
+        }
         
         return sale
     },
     onMutate: async (newSale) => {
-        // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
         await queryClient.cancelQueries({ queryKey: ['products', newSale.kioskId] })
 
-        // Snapshot the previous value
         const previousProducts = queryClient.getQueryData<Product[]>(['products', newSale.kioskId])
 
-        // Optimistically update to the new value
         if (previousProducts) {
              queryClient.setQueryData<Product[]>(['products', newSale.kioskId], (old) => {
                  if (!old) return []
@@ -93,11 +106,9 @@ export function useCreateSale() {
              })
         }
 
-        // Return a context object with the snapshotted value
         return { previousProducts }
     },
     onError: (err, newSale, context) => {
-        // If the mutation fails, use the context returned from onMutate to roll back
         if (context?.previousProducts) {
             queryClient.setQueryData(['products', newSale.kioskId], context.previousProducts)
         }
@@ -105,10 +116,15 @@ export function useCreateSale() {
         console.error("Link Sale Error:", err)
     },
     onSettled: (data, error, variables) => {
-        // Always refetch after error or success:
         queryClient.invalidateQueries({ queryKey: ['products', variables.kioskId] })
         queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
         queryClient.invalidateQueries({ queryKey: ['sales'] })
+        queryClient.invalidateQueries({ queryKey: ['low_stock_alerts', variables.kioskId] })
+        // Refresh customer debt data if fiado
+        if (variables.method === 'fiado' && variables.customerId) {
+            queryClient.invalidateQueries({ queryKey: ['customers', variables.kioskId] })
+        }
     },
   })
 }
+

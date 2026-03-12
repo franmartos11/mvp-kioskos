@@ -101,6 +101,7 @@ export default async function EmployeesPage() {
           const { data: shiftData } = await supabase
             .from('work_shifts')
             .select('*')
+            .in('kiosk_id', kioskIds) // Fix 7: only fetch shifts for user's kiosks
             .order('date', { ascending: false })
             .limit(500)
           

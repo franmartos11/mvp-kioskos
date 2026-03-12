@@ -2,6 +2,8 @@ import { createClient } from "@/utils/supabase/server"
 import { redirect } from "next/navigation"
 import { DashboardClient } from "@/components/dashboard/dashboard-client"
 import { subDays } from "date-fns"
+import { Suspense } from "react"
+import { Loader2 } from "lucide-react"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -17,7 +19,6 @@ export default async function DashboardPage() {
   const endDate = new Date()
   const startDate = subDays(endDate, 30)
 
-  // We can fetch kiosks and stats in parallel since we have user.id
   const [kiosksRes, statsRes] = await Promise.all([
     supabase
         .from('kiosk_members')
@@ -31,7 +32,6 @@ export default async function DashboardPage() {
         `)
         .eq('user_id', user.id),
     
-    // We can call the RPC directly via Supabase client
     supabase.rpc('get_dashboard_stats', {
         p_user_id: user.id,
         p_start_date: startDate.toISOString(),
@@ -54,10 +54,16 @@ export default async function DashboardPage() {
   const initialStats = statsRes.data || null
 
   return (
-    <DashboardClient 
-        user={user} 
-        kiosks={kiosks}
-        initialStats={initialStats} 
-    />
+    <Suspense fallback={
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <DashboardClient 
+          user={user} 
+          kiosks={kiosks}
+          initialStats={initialStats} 
+      />
+    </Suspense>
   )
 }

@@ -1,12 +1,11 @@
 "use client"
 
-import Link from "next/link"
 import { useState, useEffect } from "react"
-import { Plus, Search, Truck, Phone, Mail, MapPin, MoreHorizontal, Pencil, Trash, ShoppingCart } from "lucide-react"
+import { Plus, Search, Truck, Phone, Mail, MoreHorizontal, Pencil, Trash } from "lucide-react"
 import { supabase } from "@/utils/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -24,7 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { AddSupplierDialog } from "./add-supplier-dialog"
 import { SupplierDetailsDialog } from "./supplier-details-dialog"
-import { SupplierOrdersList } from "./supplier-orders-list"
+import { PurchaseOrdersClient } from "./purchase-orders-client"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
 
@@ -96,16 +95,9 @@ export function SuppliersClient() {
                 </div>
                 <div className="flex gap-2">
                     {isOwner && (
-                        <>
-                            <Link href="/suppliers/new-order">
-                                <Button variant="outline">
-                                    <ShoppingCart className="mr-2 h-4 w-4" /> Nuevo Pedido
-                                </Button>
-                            </Link>
-                            <Button onClick={() => { setSelectedSupplier(null); setIsAddOpen(true); }}>
-                                <Plus className="mr-2 h-4 w-4" /> Nuevo Proveedor
-                            </Button>
-                        </>
+                        <Button onClick={() => { setSelectedSupplier(null); setIsAddOpen(true); }}>
+                            <Plus className="mr-2 h-4 w-4" /> Nuevo Proveedor
+                        </Button>
                     )}
                 </div>
             </div>
@@ -211,14 +203,7 @@ export function SuppliersClient() {
                 </TabsContent>
                 
                 <TabsContent value="orders" className="flex-1 mt-0">
-                    <Card className="h-full">
-                        <CardHeader>
-                            <CardTitle>Historial de Compras</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <SupplierOrdersList />
-                        </CardContent>
-                    </Card>
+                    <PurchaseOrdersClient />
                 </TabsContent>
             </Tabs>
 

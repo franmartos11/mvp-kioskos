@@ -20,7 +20,20 @@ export async function inviteUser(kioskId: string, email: string, role: string) {
 
     if (!isOwner) throw new Error('No tenés permiso para invitar usuarios a este kiosco')
 
-    // 2. Create invitation record in DB
+    // 2. Revoke any existing pending invitation for the same email+kiosk
+    // (required by the unique partial index on (kiosk_id, email) WHERE status='pending')
+    await supabase
+      .from('kiosk_invitations')
+      .update({ status: 'revoked' })
+      .eq('kiosk_id', kioskId)
+      .eq('email', email)
+      .eq('status', 'pending')
+
+    // 3. Generate a short human-readable invite code via DB function
+    const { data: codeData } = await supabase.rpc('generate_invite_code')
+    const inviteCode: string = codeData || ''
+
+    // 4. Create new invitation record in DB
     const token = uuidv4()
     const expiresAt = new Date()
     expiresAt.setHours(expiresAt.getHours() + 48)
@@ -32,6 +45,7 @@ export async function inviteUser(kioskId: string, email: string, role: string) {
         email,
         role,
         token,
+        invite_code: inviteCode,
         status: 'pending',
         expires_at: expiresAt.toISOString(),
         invited_by: user.id
@@ -52,7 +66,7 @@ export async function inviteUser(kioskId: string, email: string, role: string) {
 
     // 4. Build invite link pointing to production
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://mvp-kioskos.vercel.app'
-    const inviteLink = `${siteUrl}/invite?token=${token}`
+    const inviteLink = `${siteUrl}/invite/accept?token=${token}`
     const roleLabel = role === 'owner' ? 'Dueño' : 'Vendedor'
 
     // 5. Send email via Resend (no rate limits like Supabase SMTP)
@@ -81,6 +95,13 @@ export async function inviteUser(kioskId: string, email: string, role: string) {
           </div>
           <p style="color: #888; font-size: 13px;">O copiá este enlace en tu navegador:</p>
           <p style="color: #2563eb; font-size: 13px; word-break: break-all;">${inviteLink}</p>
+          ${inviteCode ? `
+          <div style="margin: 24px 0; padding: 16px; background: #f0f7ff; border: 1px solid #bfdbfe; border-radius: 8px; text-align: center;">
+            <p style="color: #555; font-size: 12px; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 1px;">O ingresá este código en la app:</p>
+            <span style="font-family: monospace; font-size: 28px; font-weight: bold; color: #2563eb; letter-spacing: 6px;">${inviteCode}</span>
+            <p style="color: #888; font-size: 11px; margin: 8px 0 0 0;">El código tiene 6 caracteres y expira en 48 horas.</p>
+          </div>
+          ` : ''}
           <p style="color: #666; font-size: 13px;">Este enlace expirará en 48 horas.</p>
           <p style="color: #666; font-size: 13px;">Si no esperabas esta invitación, podés ignorar este correo.</p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
@@ -100,7 +121,7 @@ export async function inviteUser(kioskId: string, email: string, role: string) {
     }
 
     revalidatePath('/employees')
-    return { success: true }
+    return { success: true, inviteCode: inviteCode }
   } catch (error: any) {
     console.error('[invite] Unexpected error:', error)
     return { success: false, error: error.message }
@@ -110,19 +131,27 @@ export async function inviteUser(kioskId: string, email: string, role: string) {
 export async function validateInvitationToken(token: string) {
   const supabase = await createClient()
 
+  // Use the SECURITY DEFINER RPC to look up by token.
+  // This avoids exposing all pending invitations via direct table access.
   const { data, error } = await supabase
-    .from('kiosk_invitations')
-    .select('*, kiosks(name)')
-    .eq('token', token)
-    .eq('status', 'pending')
-    .gt('expires_at', new Date().toISOString())
-    .single()
+    .rpc('validate_invitation_by_token', { p_token: token })
 
-  if (error || !data) {
+  if (error || !data || data.length === 0) {
     return { success: false, error: 'Token inválido o expirado' }
   }
 
-  return { success: true, invitation: data }
+  const row = data[0]
+  // Shape data to match what the invite page expects: invitation + nested kiosks.name
+  const invitation = {
+    id: row.id,
+    kiosk_id: row.kiosk_id,
+    email: row.email,
+    role: row.role,
+    expires_at: row.expires_at,
+    kiosks: { name: row.kiosk_name }
+  }
+
+  return { success: true, invitation }
 }
 
 export async function cancelInvitation(invitationId: string) {

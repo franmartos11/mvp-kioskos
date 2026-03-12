@@ -22,32 +22,39 @@ export async function GET(request: Request) {
       throw new Error('Debes iniciar sesión para aceptar la invitación.')
     }
 
-    // 2. Validate token again
-    const { data: invitation, error: inviteError } = await supabase
-      .from('kiosk_invitations')
-      .select('id, kiosk_id, email, role')
-      .eq('token', token)
-      .eq('status', 'pending')
-      .gt('expires_at', new Date().toISOString())
-      .single()
+    // 2. Validate token via SECURITY DEFINER RPC (consistent with join-by-code)
+    const { data: rows, error: inviteError } = await supabase
+      .rpc('validate_invitation_by_token', { p_token: token })
+
+    const invitation = rows?.[0]
 
     if (inviteError || !invitation) {
       throw new Error('La invitación es inválida o ha expirado.')
     }
 
-    // 3. (Optional) Check if email matches.
-    // If you want strict matching, uncomment this:
-    // if (user.email !== invitation.email) {
-    //   throw new Error('El correo de la invitación no coincide con el de la cuenta.')
-    // }
+    // 3. SECURITY: Verify the logged-in user's email matches the invitation
+    if (user.email !== invitation.email) {
+      throw new Error('El correo de tu cuenta no coincide con el de la invitación. Iniciá sesión con ' + invitation.email)
+    }
 
-    // 4. Create Kiosk Member
+    // 4. Create Kiosk Member with correct default permissions based on role
+    const defaultPermissions = invitation.role === 'owner'
+      ? {
+          view_dashboard: true, view_finance: true, manage_products: true,
+          view_costs: true, manage_stock: true, manage_members: true, view_reports: true
+        }
+      : {
+          view_dashboard: false, view_finance: false, manage_products: false,
+          view_costs: false, manage_stock: true, manage_members: false, view_reports: false
+        }
+
     const { error: memberError } = await supabase
       .from('kiosk_members')
       .insert({
         kiosk_id: invitation.kiosk_id,
         user_id: user.id,
-        role: invitation.role
+        role: invitation.role,
+        permissions: defaultPermissions
       })
 
     // It's possible the user is already a member (e.g. they clicked the link twice)

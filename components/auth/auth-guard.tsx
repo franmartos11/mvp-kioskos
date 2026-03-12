@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useRouter, usePathname } from "next/navigation"
 import { supabase } from "@/utils/supabase/client"
 import { Button } from "@/components/ui/button"
-import { LogOut, User, Store } from "lucide-react"
+import { LogOut, User, Store, KeyRound, PlusCircle } from "lucide-react"
 import { Avatar, AvatarFallback } from "../ui/avatar"
 import {
   DropdownMenu,
@@ -16,6 +16,8 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu"
 import { toast } from "sonner"
+import Link from "next/link"
+import { LowStockAlertButton } from "@/components/inventory/low-stock-alert-button"
 
 interface AuthGuardProps {
   children: React.ReactNode
@@ -25,6 +27,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [kioskName, setKioskName] = useState("")
+  const [hasKiosk, setHasKiosk] = useState<boolean | null>(null)
   const router = useRouter()
   const pathname = usePathname()
 
@@ -41,15 +44,18 @@ export function AuthGuard({ children }: AuthGuardProps) {
         setUser(user)
         
         // Fetch kiosk info
-        const { data: member } = await supabase
+        const { data: member, count } = await supabase
             .from('kiosk_members')
-            .select('kiosk_id, kiosks(name)')
+            .select('kiosk_id, kiosks(name)', { count: 'exact' })
             .eq('user_id', user.id)
             .maybeSingle()
         
         if (member && member.kiosks) {
             // @ts-ignore
             setKioskName(member.kiosks.name)
+            setHasKiosk(true)
+        } else {
+            setHasKiosk(false)
         }
 
       } catch (error) {
@@ -102,6 +108,56 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
   if (!user) return null
 
+  // User is authenticated but has no kiosk assigned yet
+  // Show them an onboarding choice screen instead of the empty app
+  if (hasKiosk === false) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-8 p-6 bg-background">
+        <div className="text-center space-y-2">
+          <div className="flex justify-center mb-4">
+            <div className="bg-primary/10 p-4 rounded-full">
+              <Store className="h-10 w-10 text-primary" />
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold">Bienvenido a KioskApp</h1>
+          <p className="text-muted-foreground max-w-sm">
+            Tu cuenta está activa. ¿Qué querés hacer?
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          <Link href="/join">
+            <Button className="w-full gap-2" size="lg">
+              <KeyRound className="h-4 w-4" />
+              Ingresar con código de invitación
+            </Button>
+          </Link>
+          <p className="text-center text-xs text-muted-foreground">
+            — o —
+          </p>
+          <Button
+            variant="outline"
+            className="w-full gap-2"
+            size="lg"
+            onClick={() => {
+              window.location.href = '/dashboard?onboarding=true'
+            }}
+          >
+            <PlusCircle className="h-4 w-4" />
+            Crear mi propio kiosco
+          </Button>
+        </div>
+
+        <button
+          className="text-xs text-muted-foreground hover:text-foreground underline"
+          onClick={handleLogout}
+        >
+          Cerrar sesión
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-muted/20">
       <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 py-4">
@@ -111,6 +167,8 @@ export function AuthGuard({ children }: AuthGuardProps) {
          </div>
          
          <div className="ml-auto flex items-center gap-2">
+            {/* Low stock alert button */}
+            <LowStockAlertButton />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">

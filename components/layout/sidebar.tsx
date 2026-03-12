@@ -2,9 +2,10 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Package, ShoppingCart, Settings, Menu, DollarSign, Receipt, Users, Truck, Wallet, TrendingDown, ClipboardList } from "lucide-react"
+import { Home, Package, ShoppingCart, Settings, Menu, DollarSign, Receipt, Users, Truck, Wallet, UserCheck, ClipboardList, AlertTriangle } from "lucide-react"
 import { useEffect, useState } from "react"
 import { supabase } from "@/utils/supabase/client"
+import { useLowStockAlerts } from "@/hooks/use-low-stock-alerts"
 
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
@@ -13,10 +14,12 @@ const navItems = [
   { href: "/dashboard", label: "Inicio", icon: Home },
   { href: "/pos", label: "Punto de Venta", icon: ShoppingCart },
   { href: "/inventory", label: "Inventario", icon: Package },
+  { href: "/customers", label: "Clientes", icon: UserCheck },
   { href: "/suppliers", label: "Proveedores", icon: Truck },
   { href: "/sales", label: "Ventas", icon: DollarSign },
   { href: "/finance/cash-register", label: "Caja", icon: Receipt },
   { href: "/finance", label: "Finanzas", icon: Wallet },
+  { href: "/reports", label: "Reportes", icon: ClipboardList },
   { href: "/employees", label: "Empleados", icon: Users },
   { href: "/settings", label: "Configuración", icon: Settings },
 ]
@@ -26,13 +29,16 @@ export function MainNav({ className, ...props }: React.HTMLAttributes<HTMLElemen
   const { currentKiosk } = useKiosk()
   
   const isOwner = currentKiosk?.role === 'owner'
-  // Permissions come from the provider — owners always have all true, sellers use stored values
   const p = currentKiosk?.permissions ?? {
       view_dashboard: false,
       view_finance: false,
       manage_members: false,
       view_reports: false,
   }
+
+  // Low stock alerts badge
+  const { data: lowStockItems = [] } = useLowStockAlerts(currentKiosk?.id)
+  const lowStockCount = lowStockItems.length
 
   return (
     <nav
@@ -77,6 +83,12 @@ export function MainNav({ className, ...props }: React.HTMLAttributes<HTMLElemen
           >
             <Icon className="h-4 w-4" />
             {item.label}
+            {/* Low stock badge on Inventario link */}
+            {item.href === '/inventory' && lowStockCount > 0 && (
+              <span className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold bg-red-500 text-white">
+                {lowStockCount > 99 ? '99+' : lowStockCount}
+              </span>
+            )}
           </Link>
         )
       })}

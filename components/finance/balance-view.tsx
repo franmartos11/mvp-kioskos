@@ -22,6 +22,7 @@ export function BalanceView() {
     const [stats, setStats] = useState({
         salesCash: 0,
         salesDigital: 0,
+        salesFiado: 0,     // ← NEW: fiado tracked separately
         expensesCash: 0,
         expensesDigital: 0,
         cogs: 0
@@ -78,9 +79,10 @@ export function BalanceView() {
             .lte('sales.created_at', endDate)
 
         // Aggregations
-        let sCash = 0, sDigital = 0
+        let sCash = 0, sDigital = 0, sFiado = 0
         salesData?.forEach((s: any) => {
             if (s.payment_method === 'cash') sCash += s.total
+            else if (s.payment_method === 'fiado') sFiado += s.total   // ← separate fiado
             else sDigital += s.total
         })
 
@@ -98,6 +100,7 @@ export function BalanceView() {
         setStats({
             salesCash: sCash,
             salesDigital: sDigital,
+            salesFiado: sFiado,
             expensesCash: eCash,
             expensesDigital: eDigital,
             cogs: totalCOGS
@@ -106,13 +109,13 @@ export function BalanceView() {
     }
 
     const netCash = stats.salesCash - stats.expensesCash
-    const netDigital = stats.salesDigital - stats.expensesDigital
+    const netDigital = stats.salesDigital - stats.expensesDigital  // fiado NOT included
     
     // Financial Metrics
-    const totalSales = stats.salesCash + stats.salesDigital
+    const totalSales = stats.salesCash + stats.salesDigital + stats.salesFiado // fiado IS a sale
     const totalExpenses = stats.expensesCash + stats.expensesDigital
-    const grossProfit = totalSales - stats.cogs // Ganancia Bruta (Ventas - Costo Producto)
-    const netResult = grossProfit - totalExpenses // Resultado Final (Ventas - Costo - Gastos)
+    const grossProfit = totalSales - stats.cogs
+    const netResult = grossProfit - totalExpenses
 
     if (loading) {
         return (
@@ -327,7 +330,20 @@ export function BalanceView() {
                             </div>
                             <span className="font-bold font-mono text-lg">${netDigital.toLocaleString()}</span>
                         </div>
+                        {stats.salesFiado > 0 && (
+                            <div className="flex justify-between items-center p-3 bg-orange-50 border border-orange-200 dark:bg-orange-900/10 dark:border-orange-800 rounded-lg shadow-sm">
+                                <div className="flex items-center gap-2">
+                                    <ArrowUpRight className="h-4 w-4 text-orange-500" />
+                                    <div>
+                                        <span className="text-sm font-medium text-orange-700 dark:text-orange-400">Fiado (por cobrar)</span>
+                                        <p className="text-[10px] text-orange-500">Pendiente en cuentas corrientes</p>
+                                    </div>
+                                </div>
+                                <span className="font-bold font-mono text-lg text-orange-600 dark:text-orange-400">${stats.salesFiado.toLocaleString()}</span>
+                            </div>
+                        )}
                     </CardContent>
+
                  </Card>
             </div>
         </div>

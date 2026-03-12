@@ -313,7 +313,7 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
     setCart(prev => prev.filter(item => item.product.id !== productId))
   }
 
-  const handleCheckout = async (method: PaymentMethod, customerName?: string) => {
+  const handleCheckout = async (method: PaymentMethod, customerName?: string, customerId?: string | null) => {
     if (cart.length === 0) return
     if (!kioskId || !userId) {
         toast.error("Error de sesión: No se identificó el kiosco o usuario.")
@@ -326,7 +326,7 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
     // OPTIMISTIC UI: Clear cart immediately and close dialog
     setCart([])
     setShowCheckout(false)
-    toast.success("Venta procesada") // Optimistic success message
+    toast.success(method === 'fiado' ? 'Fiado registrado ✅' : 'Venta procesada')
 
     // Trigger mutation
     createSale.mutate({
@@ -335,13 +335,13 @@ export function PosContainer({ initialProducts }: PosContainerProps) {
         userId,
         method,
         customerName,
+        customerId,
         activePriceList: activePriceList ? { id: activePriceList.id, name: activePriceList.name } : null
     }, {
         onError: () => {
             // Rollback UI if failed
             setCart(backupCart)
-            setShowCheckout(true) // Re-open to let user try again
-            // Toast error is handled in hook
+            setShowCheckout(true)
         }
     })
   }
