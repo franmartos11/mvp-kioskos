@@ -22,6 +22,7 @@ import { useKiosk } from "@/components/providers/kiosk-provider"
 import { Badge } from "@/components/ui/badge"
 import { useSubscription } from "@/hooks/use-subscription"
 import { CreateKioskDialog } from "./create-kiosk-dialog"
+import { JoinKioskDialog } from "./join-kiosk-dialog"
 
 export function KioskSwitcher({ className }: { className?: string }) {
   const { allKiosks, currentKiosk, setKiosk } = useKiosk()
@@ -109,6 +110,9 @@ export function KioskSwitcher({ className }: { className?: string }) {
                      <CreateKioskDialog />
                 </CommandGroup>
             )}
+            <CommandGroup>
+                 <JoinKioskDialog />
+            </CommandGroup>
           </CommandList>
         </Command>
       </PopoverContent>

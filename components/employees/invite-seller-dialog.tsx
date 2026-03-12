@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,14 +8,14 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { supabase } from "@/utils/supabase/client"
 import { toast } from "sonner"
-import { Loader2, UserPlus, Search, Mail, Copy, Check, KeyRound } from "lucide-react"
+import { Loader2, UserPlus, Search, Mail, Copy, Check, KeyRound, MessageCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useKiosk } from "@/components/providers/kiosk-provider"
 import { useSubscription } from "@/hooks/use-subscription"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import Link from "next/link"
 import { ShieldAlert } from "lucide-react"
-import { inviteUser } from "@/app/actions/invitations"
+
 
 interface Kiosk {
   id: string
@@ -42,16 +42,11 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
   const { plan, isEnterprise } = useSubscription()
   const [employeeCount, setEmployeeCount] = useState(0)
   const [limitReached, setLimitReached] = useState(false)
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   // Check limits
   const router = useRouter()
-
-  if (!currentKiosk || currentKiosk.role !== 'owner') {
-      return null
-  }
-
-  const [generatedCode, setGeneratedCode] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
 
   const checkLimit = async () => {
     if (isEnterprise) return // Unlimited
@@ -76,9 +71,16 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
         setLimitReached(false)
     }
   }
-  
-  if (open && !limitReached && !isEnterprise) {
+
+  // Check limits when dialog opens
+  useEffect(() => {
+    if (open && !limitReached && !isEnterprise) {
       checkLimit()
+    }
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!currentKiosk || currentKiosk.role !== 'owner') {
+      return null
   }
 
   const handleSearch = async () => {
@@ -161,7 +163,13 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
     setLoading(true)
 
     try {
-        const res = await inviteUser(kioskId, email.trim(), 'seller')
+        const response = await fetch('/api/invite/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ kioskId, email: email.trim(), role: 'seller' })
+        })
+        const res = await response.json()
+
         if (res.success && res.inviteCode) {
             toast.success("Invitación enviada correctamente")
             setGeneratedCode(res.inviteCode)
@@ -183,6 +191,14 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
         toast.success("Código copiado al portapapeles")
         setTimeout(() => setCopied(false), 2000)
       })
+    }
+  }
+
+  const handleWhatsAppShare = () => {
+    if (generatedCode) {
+      const text = `¡Hola! Te invito a unirte a mi kiosco como vendedor en KioskApp.\n\nSimplemente ingresá a la app y usá este código de invitación: *${generatedCode}*`
+      const url = `https://wa.me/?text=${encodeURIComponent(text)}`
+      window.open(url, '_blank')
     }
   }
 
@@ -272,9 +288,15 @@ export function InviteSellerDialog({ kiosks, onAdded }: InviteSellerDialogProps)
                     </p>
                 </div>
 
-                <Button className="w-full" onClick={resetAndClose}>
-                    Cerrar
-                </Button>
+                <div className="flex gap-2 w-full mt-4">
+                    <Button variant="outline" className="w-1/2" onClick={resetAndClose}>
+                        Cerrar
+                    </Button>
+                    <Button className="w-1/2 bg-[#25D366] hover:bg-[#128C7E] text-white" onClick={handleWhatsAppShare}>
+                        <MessageCircle className="h-4 w-4 fill-current mr-2" />
+                        WhatsApp
+                    </Button>
+                </div>
             </div>
         ) : (
         <div className="space-y-4">

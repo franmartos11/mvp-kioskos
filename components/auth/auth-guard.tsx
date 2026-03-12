@@ -44,15 +44,16 @@ export function AuthGuard({ children }: AuthGuardProps) {
         setUser(user)
         
         // Fetch kiosk info
-        const { data: member, count } = await supabase
+        const { data: members, error } = await supabase
             .from('kiosk_members')
-            .select('kiosk_id, kiosks(name)', { count: 'exact' })
+            .select('kiosk_id, kiosks(name)')
             .eq('user_id', user.id)
-            .maybeSingle()
+            .limit(1)
         
-        if (member && member.kiosks) {
+        if (members && members.length > 0) {
+            const member = members[0]
             // @ts-ignore
-            setKioskName(member.kiosks.name)
+            setKioskName(member.kiosks?.name || "")
             setHasKiosk(true)
         } else {
             setHasKiosk(false)

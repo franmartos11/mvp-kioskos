@@ -60,6 +60,7 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
   const [name, setName] = useState("")
   const [barcode, setBarcode] = useState("")
   const [price, setPrice] = useState<number>(0)
+  const [cost, setCost] = useState<number>(0)
   const [stock, setStock] = useState<number>(0)
   const [isWeighable, setIsWeighable] = useState<boolean>(false)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
@@ -85,6 +86,7 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
       setName(product.name)
       setBarcode(product.barcode || "")
       setPrice(product.price)
+      setCost(product.cost || 0)
       setStock(product.stock)
       setIsWeighable(product.is_weighable || false)
       setImageUrl(product.image_url)
@@ -174,6 +176,7 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
           name,
           barcode: barcode || null,
           price,
+          cost,
           stock,
           is_weighable: isWeighable,
           image_url: imageUrl,
@@ -325,7 +328,7 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
                                 </div>
                             </div>
                             
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="price">Precio Venta</Label>
                                     <Input 
@@ -336,6 +339,18 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
                                         onChange={(e) => setPrice(Number(e.target.value))} 
                                     />
                                 </div>
+                                {p.view_costs && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="cost">Costo Unitario</Label>
+                                        <Input 
+                                            id="cost" 
+                                            type="number"
+                                            step="0.01"
+                                            value={cost} 
+                                            onChange={(e) => setCost(Number(e.target.value))} 
+                                        />
+                                    </div>
+                                )}
                                 <div className="space-y-2">
                                     <Label htmlFor="stock">Stock</Label>
                                     <Input 

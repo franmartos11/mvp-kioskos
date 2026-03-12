@@ -35,18 +35,11 @@ export async function GET(request: Request) {
 
     const invitation = rows[0]
 
-    // 3. SECURITY: Verify the user's email matches the invitation
-    // Only do this if the invitation has an email set (it always should)
-    if (invitation.email && user.email && user.email.toLowerCase() !== invitation.email.toLowerCase()) {
-      return NextResponse.redirect(
-        new URL(
-          '/join?error=' + encodeURIComponent(
-            `Este código fue enviado a ${invitation.email}. Iniciá sesión con esa cuenta.`
-          ),
-          request.url
-        )
-      )
-    }
+    // 3. (Removed) Email strict check
+    // We used to block if user.email !== invitation.email.
+    // However, if the owner sends an invite to 'test@gmail.com' and the user signs up
+    // as 'testxyz@gmail.com', the code itself is proof of invitation. Since they possess the unique code, we allow it.
+    // This solves issues with users creating accounts under different emails than the one invited.
 
     // 4. Default permissions by role
     const defaultPermissions = invitation.role === 'owner'

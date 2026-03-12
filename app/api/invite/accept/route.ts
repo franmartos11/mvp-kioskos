@@ -32,10 +32,10 @@ export async function GET(request: Request) {
       throw new Error('La invitación es inválida o ha expirado.')
     }
 
-    // 3. SECURITY: Verify the logged-in user's email matches the invitation
-    if (user.email !== invitation.email) {
-      throw new Error('El correo de tu cuenta no coincide con el de la invitación. Iniciá sesión con ' + invitation.email)
-    }
+    // 3. (Removed) Email strict check
+    // We used to block if user.email !== invitation.email.
+    // However, if the owner sends an invite to 'test@gmail.com' and the user signs up
+    // as 'testxyz@gmail.com', the token/link itself is proof of invitation.
 
     // 4. Create Kiosk Member with correct default permissions based on role
     const defaultPermissions = invitation.role === 'owner'
