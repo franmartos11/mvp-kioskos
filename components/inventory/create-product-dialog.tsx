@@ -11,6 +11,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { X as IconX } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { CurrencyInput } from "@/components/ui/currency-input"
 import {
   Dialog,
   DialogContent,
@@ -398,10 +399,7 @@ export function CreateProductDialog({
                   <FormItem>
                     <FormLabel>Precio Venta</FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input type="number" step="0.01" className="pl-8" {...field} value={field.value as string | number} />
-                      </div>
+                      <CurrencyInput value={field.value as number} onChange={field.onChange} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -414,10 +412,7 @@ export function CreateProductDialog({
                   <FormItem>
                     <FormLabel>Costo Unitario</FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input type="number" step="0.01" className="pl-8" {...field} value={field.value as string | number} />
-                      </div>
+                      <CurrencyInput value={field.value as number} onChange={field.onChange} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

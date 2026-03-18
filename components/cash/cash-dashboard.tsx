@@ -33,6 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { OpenShiftDialog, CloseShiftDialog } from "@/components/pos/cash-register-dialog"
 import { useKiosk } from "@/components/providers/kiosk-provider"
 import { formatCurrency } from "@/lib/utils"
+import { CurrencyInput } from "@/components/ui/currency-input"
 
 export function CashDashboard() {
     const { currentKiosk } = useKiosk()
@@ -357,14 +358,11 @@ export function CashDashboard() {
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="amount" className="text-right">Monto</Label>
-                            <div className="col-span-3 relative">
-                                <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
+                            <div className="col-span-3">
+                                <CurrencyInput
                                     id="amount"
-                                    type="number"
-                                    value={amount}
-                                    onChange={(e) => setAmount(e.target.value)}
-                                    className="pl-8"
+                                    value={amount === "" ? 0 : parseFloat(amount)}
+                                    onChange={(val) => setAmount(val.toString())}
                                 />
                             </div>
                         </div>

@@ -26,6 +26,7 @@ import {
 import { supabase } from "@/utils/supabase/client"
 import { Product } from "@/types/inventory"
 import { formatCurrency } from "@/lib/utils"
+import { CurrencyInput } from "@/components/ui/currency-input"
 
 interface OrderItem {
     product: Product
@@ -310,17 +311,11 @@ export function NewOrderClient() {
                                             />
                                         </TableCell>
                                         <TableCell>
-                                            <div className="relative">
-                                                <DollarSign className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
-                                                <Input 
-                                                    type="number" 
-                                                    className="w-24 h-8 pl-7"
-                                                    step="0.01"
-                                                    min={0}
-                                                    value={item.cost}
-                                                    onChange={(e) => updateItem(item.product.id, 'cost', parseFloat(e.target.value) || 0)}
-                                                />
-                                            </div>
+                                            <CurrencyInput 
+                                                className="w-24 h-8"
+                                                value={item.cost}
+                                                onChange={(val) => updateItem(item.product.id, 'cost', val)}
+                                            />
                                         </TableCell>
                                         <TableCell className="text-right">
                                             {formatCurrency(item.quantity * item.cost)}

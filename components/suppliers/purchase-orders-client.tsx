@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
 import { formatCurrency } from "@/lib/utils"
+import { CurrencyInput } from "@/components/ui/currency-input"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Supplier { id: string; name: string }
@@ -181,12 +182,11 @@ function NewOrderDialog({ suppliers, products, kioskId, onSuccess }: {
                     onChange={e => updateItem(i, 'quantity', parseInt(e.target.value) || 1)}
                   />
                 </div>
-                <div className="w-24 space-y-1">
+                <div className="w-28 space-y-1">
                   {i === 0 && <span className="text-xs text-muted-foreground">Costo unit.</span>}
-                  <Input
-                    type="number" min={0} step="0.01" placeholder="$0"
-                    value={item.unit_cost || ""}
-                    onChange={e => updateItem(i, 'unit_cost', parseFloat(e.target.value) || 0)}
+                  <CurrencyInput
+                    value={item.unit_cost || 0}
+                    onChange={(val) => updateItem(i, 'unit_cost', val)}
                   />
                 </div>
                 <Button
