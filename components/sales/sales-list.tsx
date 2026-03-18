@@ -39,7 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
+import { cn, formatCurrency } from "@/lib/utils"
 import { useKiosk } from "@/components/providers/kiosk-provider"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -144,9 +144,6 @@ export function SalesList() {
       setDetailsLoading(false)
     }
   }
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(amount)
 
   const translatePaymentMethod = (method: string) => {
     const map: Record<string, string> = {

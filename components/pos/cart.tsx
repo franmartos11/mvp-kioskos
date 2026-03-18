@@ -1,5 +1,6 @@
 import { CartItem } from "@/types/pos"
 import { Button } from "@/components/ui/button"
+import { formatCurrency } from "@/lib/utils"
 import { Minus, Plus, Trash2, ShoppingCart } from "lucide-react"
 
 interface CartProps {
@@ -36,13 +37,13 @@ export function Cart({ items, onUpdateQuantity, onSetQuantity, onRemove }: CartP
                         {item.product.name}
                     </p>
                     <p className="font-bold text-base min-w-[70px] text-right">
-                        ${(item.product.price * item.quantity).toFixed(2)}
+                        {formatCurrency(item.product.price * item.quantity)}
                     </p>
                 </div>
                 
                 <div className="flex items-center justify-between">
                     <p className="text-sm text-muted-foreground">
-                        ${item.product.price} c/u
+                        {formatCurrency(item.product.price)} c/u
                     </p>
                     
                     <div className="flex items-center gap-3">
@@ -96,7 +97,7 @@ export function Cart({ items, onUpdateQuantity, onSetQuantity, onRemove }: CartP
         <div className="p-4 bg-muted/20 border-t mt-auto shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
             <div className="flex justify-between items-end">
                 <span className="text-muted-foreground font-medium">Total a Pagar</span>
-                <span className="text-3xl font-black tracking-tight">${total.toFixed(2)}</span>
+                <span className="text-3xl font-black tracking-tight">{formatCurrency(total)}</span>
             </div>
         </div>
     </div>

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatCurrency } from "@/lib/utils"
 
 type Payment = {
     id: string
@@ -91,7 +92,7 @@ export function PaymentHistory() {
                                 </TableCell>
                                 <TableCell className="font-mono text-xs">{payment.provider_payment_id || payment.id.slice(0,8)}</TableCell>
                                 <TableCell>
-                                    {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(payment.amount)}
+                                    {formatCurrency(payment.amount)}
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <Badge variant={payment.status === 'approved' ? 'default' : 'secondary'}>

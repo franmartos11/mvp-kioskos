@@ -10,6 +10,7 @@ import { format, subDays, getHours } from "date-fns"
 import { es } from "date-fns/locale"
 
 import { DateRange } from "react-day-picker"
+import { formatCurrency } from "@/lib/utils"
 
 interface KioskDetailViewProps {
     kioskId: string
@@ -88,15 +89,6 @@ export function KioskDetailView({ kioskId, kioskName, dateRange }: KioskDetailVi
         }
         return map[method] || method
     }
-
-    const formatCurrency = (val: number) => {
-        return new Intl.NumberFormat('es-AR', {
-            style: 'currency',
-            currency: 'ARS'
-        }).format(val)
-    }
-
-
 
     if (loading) {
          return (

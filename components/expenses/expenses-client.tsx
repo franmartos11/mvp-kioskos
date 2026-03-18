@@ -12,6 +12,7 @@ import { Plus, Search, Filter, TrendingDown } from "lucide-react"
 import { AddExpenseDialog } from "./add-expense-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useKiosk } from "@/components/providers/kiosk-provider"
+import { formatCurrency } from "@/lib/utils"
 
 export function ExpensesClient() {
     const { currentKiosk } = useKiosk()
@@ -84,7 +85,7 @@ export function ExpensesClient() {
                         <CardDescription>Lista completa de egresos registrados.</CardDescription>
                      </div>
                      <div className="text-right">
-                         <div className="text-2xl font-bold text-destructive">-${totalFiltered.toLocaleString()}</div>
+                         <div className="text-2xl font-bold text-destructive">-{formatCurrency(totalFiltered)}</div>
                          <p className="text-xs text-muted-foreground">Total en vista</p>
                      </div>
                 </CardHeader>
@@ -148,7 +149,7 @@ export function ExpensesClient() {
                                                 </span>
                                             </TableCell>
                                             <TableCell className="text-right font-bold text-destructive">
-                                                -${expense.amount.toLocaleString()}
+                                                -{formatCurrency(expense.amount)}
                                             </TableCell>
                                         </TableRow>
                                     ))

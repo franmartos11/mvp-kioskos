@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Loader2, Plus, ScanBarcode, Upload, Image as ImageIcon } from "lucide-react"
+import { Loader2, Plus, ScanBarcode, Upload, Image as ImageIcon, DollarSign } from "lucide-react"
 import { BarcodeScanner } from "./barcode-scanner"
 import { toast } from "sonner"
 import { useQueryClient } from "@tanstack/react-query"
@@ -398,7 +398,10 @@ export function CreateProductDialog({
                   <FormItem>
                     <FormLabel>Precio Venta</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" {...field} value={field.value as string | number} />
+                      <div className="relative">
+                        <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input type="number" step="0.01" className="pl-8" {...field} value={field.value as string | number} />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -411,7 +414,10 @@ export function CreateProductDialog({
                   <FormItem>
                     <FormLabel>Costo Unitario</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" {...field} value={field.value as string | number} />
+                      <div className="relative">
+                        <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input type="number" step="0.01" className="pl-8" {...field} value={field.value as string | number} />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

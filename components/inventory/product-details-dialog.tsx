@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts'
+import { formatCurrency } from "@/lib/utils"
 
 import {
   Select,
@@ -398,7 +399,7 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
                                 <span className="text-sm font-medium text-muted-foreground block mb-2">Precio de Venta</span>
                                 <div className="text-4xl font-bold flex items-center text-primary">
                                     <DollarSign className="h-8 w-8 mr-1 text-muted-foreground" />
-                                    {product.price.toFixed(2)}
+                                    {formatCurrency(product.price).replace('$', '')}
                                 </div>
                             </div>
 
@@ -407,7 +408,7 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
                                     <div className="p-4 rounded-lg border">
                                         <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Costo Unitario</span>
                                         <div className="text-xl font-semibold mt-1">
-                                            {product.cost ? `$${product.cost.toFixed(2)}` : '-'}
+                                            {product.cost ? formatCurrency(product.cost) : '-'}
                                         </div>
                                     </div>
                                 )}
@@ -486,7 +487,7 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">
-                                {stats ? `$${stats.totalRevenue.toFixed(2)}` : "-"}
+                                {stats ? formatCurrency(stats.totalRevenue) : "-"}
                             </div>
                         </CardContent>
                     </Card>
@@ -498,7 +499,7 @@ export function ProductDetailsDialog({ product, open, onOpenChange, onProductUpd
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold text-emerald-600">
-                                    {stats ? `$${stats.estimatedProfit.toFixed(2)}` : "-"}
+                                    {stats ? formatCurrency(stats.estimatedProfit) : "-"}
                                 </div>
                             </CardContent>
                         </Card>

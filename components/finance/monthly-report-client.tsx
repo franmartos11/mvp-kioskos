@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatCurrency } from "@/lib/utils"
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface MonthlySale {
@@ -139,7 +140,6 @@ export function MonthlyReportClient() {
 
   useEffect(() => { fetchReport() }, [fetchReport])
 
-  const fmt = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n)
   const pct = (n: number) => report && report.totalRevenue > 0 ? ((n / report.totalRevenue) * 100).toFixed(1) + '%' : '0%'
 
   const monthLabel = format(monthDate, "MMMM yyyy", { locale: es })
@@ -189,7 +189,7 @@ export function MonthlyReportClient() {
                 <TrendingUp className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{fmt(report.totalRevenue)}</div>
+                <div className="text-2xl font-bold">{formatCurrency(report.totalRevenue)}</div>
                 <p className="text-xs text-muted-foreground mt-1">Ingresos totales del mes</p>
               </CardContent>
             </Card>
@@ -211,7 +211,7 @@ export function MonthlyReportClient() {
                 <DollarSign className="h-4 w-4 text-purple-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{fmt(report.ticketAvg)}</div>
+                <div className="text-2xl font-bold">{formatCurrency(report.ticketAvg)}</div>
                 <p className="text-xs text-muted-foreground mt-1">Por venta</p>
               </CardContent>
             </Card>
@@ -222,7 +222,7 @@ export function MonthlyReportClient() {
                 <CreditCard className="h-4 w-4 text-orange-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-orange-600">{fmt(report.byFiado)}</div>
+                <div className="text-2xl font-bold text-orange-600">{formatCurrency(report.byFiado)}</div>
                 <p className="text-xs text-muted-foreground mt-1">Por cobrar en cuentas</p>
               </CardContent>
             </Card>
@@ -245,7 +245,7 @@ export function MonthlyReportClient() {
                   <div key={m.label}>
                     <div className="flex justify-between text-sm mb-1">
                       <span className="font-medium">{m.label}</span>
-                      <span className="tabular-nums font-bold">{fmt(m.value)} <span className="text-muted-foreground font-normal">({pct(m.value)})</span></span>
+                      <span className="tabular-nums font-bold">{formatCurrency(m.value)} <span className="text-muted-foreground font-normal">({pct(m.value)})</span></span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div
@@ -275,7 +275,7 @@ export function MonthlyReportClient() {
                           <span className="font-medium truncate max-w-[180px]">{p.name}</span>
                         </div>
                         <div className="text-right shrink-0">
-                          <div className="font-semibold tabular-nums">{fmt(p.revenue)}</div>
+                          <div className="font-semibold tabular-nums">{formatCurrency(p.revenue)}</div>
                           <div className="text-xs text-muted-foreground">{p.quantity} u.</div>
                         </div>
                       </div>
@@ -312,9 +312,9 @@ export function MonthlyReportClient() {
                             {format(new Date(stat.day + 'T12:00:00'), "EEEE d", { locale: es })}
                           </td>
                           <td className="py-2 px-2 text-right tabular-nums">{stat.count}</td>
-                          <td className="py-2 px-2 text-right tabular-nums font-semibold">{fmt(stat.total)}</td>
+                          <td className="py-2 px-2 text-right tabular-nums font-semibold">{formatCurrency(stat.total)}</td>
                           <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
-                            {fmt(stat.count > 0 ? stat.total / stat.count : 0)}
+                            {formatCurrency(stat.count > 0 ? stat.total / stat.count : 0)}
                           </td>
                         </tr>
                       ))}
@@ -323,8 +323,8 @@ export function MonthlyReportClient() {
                       <tr className="font-bold">
                         <td className="py-2 px-2">TOTAL</td>
                         <td className="py-2 px-2 text-right">{report.totalTransactions}</td>
-                        <td className="py-2 px-2 text-right">{fmt(report.totalRevenue)}</td>
-                        <td className="py-2 px-2 text-right">{fmt(report.ticketAvg)}</td>
+                        <td className="py-2 px-2 text-right">{formatCurrency(report.totalRevenue)}</td>
+                        <td className="py-2 px-2 text-right">{formatCurrency(report.ticketAvg)}</td>
                       </tr>
                     </tfoot>
                   </table>

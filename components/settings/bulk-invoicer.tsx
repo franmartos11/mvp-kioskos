@@ -12,6 +12,7 @@ import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { toast } from "sonner"
 import { Loader2, FileCheck, AlertCircle } from "lucide-react"
+import { formatCurrency } from "@/lib/utils"
 
 interface SaleResult {
     id: string
@@ -182,7 +183,7 @@ export function BulkInvoicer() {
                                             <Badge variant="outline" className="capitalize">{sale.payment_method}</Badge>
                                         </TableCell>
                                         <TableCell className="font-bold">
-                                            ${sale.total.toFixed(2)}
+                                            {formatCurrency(sale.total)}
                                         </TableCell>
                                         <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
                                             {/* We might display items count or preview here if we joined sale_items */}

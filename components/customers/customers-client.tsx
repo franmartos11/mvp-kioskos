@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import { formatCurrency } from "@/lib/utils"
 
 interface Customer {
   id: string
@@ -158,7 +159,7 @@ function PaymentDialog({
         p_user_id: userId,
       })
       if (error) throw error
-      toast.success(`Pago de $${num.toFixed(2)} registrado`)
+      toast.success(`Pago de ${formatCurrency(num)} registrado`)
       setAmount("")
       setNotes("")
       onSuccess()
@@ -176,7 +177,7 @@ function PaymentDialog({
         <DialogHeader>
           <DialogTitle>Registrar Pago — {customer?.name}</DialogTitle>
           <DialogDescription>
-            Deuda actual: <strong className="text-red-600">${balance.toFixed(2)}</strong>
+            Deuda actual: <strong className="text-red-600">{formatCurrency(balance)}</strong>
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
@@ -196,7 +197,7 @@ function PaymentDialog({
                 className="text-xs text-primary hover:underline"
                 onClick={() => setAmount(balance.toFixed(2))}
               >
-                Pagar deuda completa (${balance.toFixed(2)})
+                Pagar deuda completa ({formatCurrency(balance)})
               </button>
             )}
           </div>
@@ -264,7 +265,7 @@ function HistoryDialog({ open, onOpenChange, customer }: {
               </div>
               <div className="text-right">
                 <p className={`font-bold text-sm ${m.type === 'charge' ? 'text-red-600' : 'text-green-600'}`}>
-                  {m.type === 'charge' ? '+' : '-'}${m.amount.toFixed(2)}
+                  {m.type === 'charge' ? '+' : '-'}{formatCurrency(m.amount)}
                 </p>
                 <p className="text-xs text-muted-foreground">{format(new Date(m.created_at), "d MMM HH:mm", { locale: es })}</p>
               </div>
@@ -356,7 +357,7 @@ export function CustomersClient() {
           <CardContent className="pt-6 flex items-center gap-3">
             <div className="bg-red-100 p-2 rounded-full"><TrendingDown className="h-5 w-5 text-red-600" /></div>
             <div>
-              <p className="text-2xl font-bold text-red-600">${totalDebt.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-red-600">{formatCurrency(totalDebt)}</p>
               <p className="text-xs text-muted-foreground">Deuda Total Pendiente</p>
             </div>
           </CardContent>
@@ -426,7 +427,7 @@ export function CustomersClient() {
                     </TableCell>
                     <TableCell className="text-right">
                       {debt > 0
-                        ? <Badge variant="destructive">${debt.toFixed(2)}</Badge>
+                        ? <Badge variant="destructive">{formatCurrency(debt)}</Badge>
                         : <Badge variant="secondary" className="text-green-700 bg-green-100">Al día</Badge>}
                     </TableCell>
                     <TableCell className="text-right">

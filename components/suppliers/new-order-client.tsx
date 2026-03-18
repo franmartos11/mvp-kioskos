@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Search, Plus, Trash, ArrowLeft, Save, Loader2 } from "lucide-react"
+import { Search, Plus, Trash, ArrowLeft, Save, Loader2, DollarSign } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/table"
 import { supabase } from "@/utils/supabase/client"
 import { Product } from "@/types/inventory"
+import { formatCurrency } from "@/lib/utils"
 
 interface OrderItem {
     product: Product
@@ -195,7 +196,7 @@ export function NewOrderClient() {
                 <div className="ml-auto flex items-center gap-4">
                     <div className="text-right">
                         <span className="text-sm text-muted-foreground">Total Estimado</span>
-                        <div className="text-2xl font-bold">${totalAmount.toLocaleString()}</div>
+                        <div className="text-2xl font-bold">{formatCurrency(totalAmount)}</div>
                     </div>
                     <Button onClick={handleSave} disabled={saving || items.length === 0}>
                         {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -309,17 +310,20 @@ export function NewOrderClient() {
                                             />
                                         </TableCell>
                                         <TableCell>
-                                            <Input 
-                                                type="number" 
-                                                className="w-24 h-8"
-                                                step="0.01"
-                                                min={0}
-                                                value={item.cost}
-                                                onChange={(e) => updateItem(item.product.id, 'cost', parseFloat(e.target.value) || 0)}
-                                            />
+                                            <div className="relative">
+                                                <DollarSign className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
+                                                <Input 
+                                                    type="number" 
+                                                    className="w-24 h-8 pl-7"
+                                                    step="0.01"
+                                                    min={0}
+                                                    value={item.cost}
+                                                    onChange={(e) => updateItem(item.product.id, 'cost', parseFloat(e.target.value) || 0)}
+                                                />
+                                            </div>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            ${(item.quantity * item.cost).toFixed(2)}
+                                            {formatCurrency(item.quantity * item.cost)}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <Button 

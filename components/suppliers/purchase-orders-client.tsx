@@ -21,6 +21,7 @@ import {
   SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
+import { formatCurrency } from "@/lib/utils"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Supplier { id: string; name: string }
@@ -215,7 +216,7 @@ function NewOrderDialog({ suppliers, products, kioskId, onSuccess }: {
           {/* Total */}
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border text-sm font-semibold">
             <span>Total estimado</span>
-            <span className="text-lg">${total.toFixed(2)}</span>
+            <span className="text-lg">{formatCurrency(total)}</span>
           </div>
         </div>
 
@@ -398,7 +399,7 @@ function OrderCard({ order, isOwner, isExpanded, onToggle, onReceive, onCancel, 
             </div>
           </div>
           <div className="text-right shrink-0">
-            <div className="font-bold">${order.total?.toFixed(2) || "0.00"}</div>
+            <div className="font-bold">{formatCurrency(order.total || 0)}</div>
           </div>
           {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
         </div>
@@ -412,8 +413,8 @@ function OrderCard({ order, isOwner, isExpanded, onToggle, onReceive, onCancel, 
                 <div key={i} className="flex items-center justify-between px-3 py-2">
                   <span className="font-medium">{item.product_name}</span>
                   <div className="flex items-center gap-4 text-muted-foreground">
-                    <span>{item.quantity} u. × ${item.unit_cost.toFixed(2)}</span>
-                    <span className="font-semibold text-foreground">${(item.quantity * item.unit_cost).toFixed(2)}</span>
+                    <span>{item.quantity} u. × {formatCurrency(item.unit_cost)}</span>
+                    <span className="font-semibold text-foreground">{formatCurrency(item.quantity * item.unit_cost)}</span>
                   </div>
                 </div>
               ))}

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { formatCurrency } from "@/lib/utils"
 
 interface SupplierOrder {
     id: string
@@ -129,7 +130,7 @@ export function SupplierOrdersList() {
                                      </TableCell>
                                      {isOwner && (
                                          <TableCell className="text-right font-bold">
-                                             ${order.total_amount.toFixed(2)}
+                                             {formatCurrency(order.total_amount)}
                                          </TableCell>
                                      )}
                                      <TableCell className="text-right">

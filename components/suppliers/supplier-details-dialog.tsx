@@ -8,6 +8,7 @@ import { es } from "date-fns/locale"
 import { Loader2, Phone, Mail, MapPin, Package, DollarSign, Calendar } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { formatCurrency } from "@/lib/utils"
 
 interface Supplier {
     id: string
@@ -80,13 +81,6 @@ export function SupplierDetailsDialog({ open, onOpenChange, supplier }: Supplier
         } finally {
             setLoading(false)
         }
-    }
-
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat("es-AR", {
-            style: "currency",
-            currency: "ARS",
-        }).format(amount)
     }
 
     const translateStatus = (status: string) => {

@@ -1,5 +1,6 @@
 import { Product } from "@/types/inventory"
 import { Plus, Minus, Image as ImageIcon } from "lucide-react"
+import { formatCurrency } from "@/lib/utils"
 
 interface ProductCardProps {
   product: Product
@@ -52,7 +53,7 @@ export function ProductCard({ product, onAdd, onRemove, quantity = 0 }: ProductC
       <div className="p-2 lg:p-3 flex flex-col justify-between flex-1 gap-1 lg:gap-2 bg-secondary/30 border-t min-h-[70px] lg:min-h-[85px]">
         <h3 className="font-semibold text-sm lg:text-base leading-tight line-clamp-2" title={product.name}>{product.name}</h3>
         <div className="mt-auto">
-            <span className="font-bold text-lg lg:text-2xl text-primary block text-right w-full" title={`$${product.price}`}>${product.price ?? 0}</span>
+            <span className="font-bold text-lg lg:text-2xl text-primary block text-right w-full" title={formatCurrency(product.price ?? 0)}>{formatCurrency(product.price ?? 0)}</span>
         </div>
       </div>
     </div>

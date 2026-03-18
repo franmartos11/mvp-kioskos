@@ -7,6 +7,7 @@ import * as z from "zod"
 import { Loader2, DollarSign, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -216,7 +217,7 @@ export function CloseShiftDialog({ sessionId, kioskId, initialCash, openedAt, on
         }
     }
 
-    const fmt = (n: number) => `$${n.toFixed(2)}`
+    const fmt = formatCurrency
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>

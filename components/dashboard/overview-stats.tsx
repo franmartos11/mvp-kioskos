@@ -11,6 +11,7 @@ import { useKiosk } from "@/components/providers/kiosk-provider"
 import { Button } from "@/components/ui/button"
 import { Lock } from "lucide-react"
 import Link from "next/link"
+import { formatCurrency } from "@/lib/utils"
 
 interface OverviewStatsProps {
     userId: string
@@ -24,13 +25,6 @@ export function OverviewStats({ userId, initialData, dateRange }: OverviewStatsP
         { userId, from: dateRange?.from, to: dateRange?.to },
         initialData
     )
-
-    const formatCurrency = (val: number) => {
-        return new Intl.NumberFormat('es-AR', {
-            style: 'currency',
-            currency: 'ARS'
-        }).format(val)
-    }
 
     const periodLabel = dateRange?.from 
         ? `${format(dateRange.from, "LLL dd", { locale: es })} - ${dateRange.to ? format(dateRange.to, "LLL dd, y", { locale: es }) : ""}`

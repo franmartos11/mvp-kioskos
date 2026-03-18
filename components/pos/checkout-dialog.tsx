@@ -17,6 +17,7 @@ import { Loader2, UserPlus, QrCode, Copy, CheckCheck } from "lucide-react"
 import { supabase } from "@/utils/supabase/client"
 import { useKiosk } from "@/components/providers/kiosk-provider"
 import Link from "next/link"
+import { formatCurrency } from "@/lib/utils"
 
 interface PaymentConfig {
   alias?: string
@@ -128,7 +129,7 @@ export function CheckoutDialog({ open, onOpenChange, items, onConfirm }: Checkou
           {/* Total */}
           <div className="flex justify-between items-center text-xl font-bold bg-muted/40 rounded-lg px-4 py-3">
             <span>Total a Pagar</span>
-            <span className="text-primary">${total.toFixed(2)}</span>
+            <span className="text-primary">{formatCurrency(total)}</span>
           </div>
 
           {/* Method selector */}
@@ -248,7 +249,7 @@ export function CheckoutDialog({ open, onOpenChange, items, onConfirm }: Checkou
                   <SelectContent>
                     {customers.map(c => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.name}{c.balance > 0 ? ` — Debe $${c.balance.toFixed(2)}` : ""}
+                        {c.name}{c.balance > 0 ? ` — Debe ${formatCurrency(c.balance)}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>

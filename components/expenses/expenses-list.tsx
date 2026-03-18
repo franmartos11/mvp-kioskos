@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { Skeleton } from "@/components/ui/skeleton"
+import { formatCurrency } from "@/lib/utils"
 
 interface Kiosk {
   id: string
@@ -111,7 +112,7 @@ export function ExpensesList({ kiosks }: ExpensesListProps) {
                             <TableCell>{CATEGORY_LABELS[expense.category] || expense.category}</TableCell>
                             <TableCell>{expense.kiosks?.name}</TableCell>
                             <TableCell className="text-right font-medium text-red-500">
-                                - ${expense.amount.toFixed(2)}
+                                - {formatCurrency(expense.amount)}
                             </TableCell>
                         </TableRow>
                     ))}

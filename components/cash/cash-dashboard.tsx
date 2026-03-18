@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { format } from "date-fns"
-import { ArrowUpRight, ArrowDownLeft, Wallet, History, AlertTriangle } from "lucide-react"
+import { ArrowUpRight, ArrowDownLeft, Wallet, History, AlertTriangle, DollarSign } from "lucide-react"
 import { toast } from "sonner"
 import { supabase } from "@/utils/supabase/client"
 
@@ -32,6 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 import { OpenShiftDialog, CloseShiftDialog } from "@/components/pos/cash-register-dialog"
 import { useKiosk } from "@/components/providers/kiosk-provider"
+import { formatCurrency } from "@/lib/utils"
 
 export function CashDashboard() {
     const { currentKiosk } = useKiosk()
@@ -259,7 +260,7 @@ export function CashDashboard() {
                                 <Wallet className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">${stats.currentBalance.toFixed(2)}</div>
+                                <div className="text-2xl font-bold">{formatCurrency(stats.currentBalance)}</div>
                                 <p className="text-xs text-muted-foreground">
                                     En caja ahora mismo
                                 </p>
@@ -271,7 +272,7 @@ export function CashDashboard() {
                                 <ArrowUpRight className="h-4 w-4 text-green-500" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-green-600">+${stats.salesCash.toFixed(2)}</div>
+                                <div className="text-2xl font-bold text-green-600">+{formatCurrency(stats.salesCash)}</div>
                             </CardContent>
                         </Card>
                          <Card>
@@ -280,7 +281,7 @@ export function CashDashboard() {
                                 <ArrowDownLeft className="h-4 w-4 text-red-500" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-red-600">-${stats.supplierPayments.toFixed(2)}</div>
+                                <div className="text-2xl font-bold text-red-600">-{formatCurrency(stats.supplierPayments)}</div>
                             </CardContent>
                         </Card>
                          <Card>
@@ -290,10 +291,10 @@ export function CashDashboard() {
                             </CardHeader>
                             <CardContent>
                                 <div className={`text-2xl font-bold ${(stats.manualIn - stats.manualOut) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {(stats.manualIn - stats.manualOut) >= 0 ? '+' : ''}${(stats.manualIn - stats.manualOut).toFixed(2)}
+                                    {(stats.manualIn - stats.manualOut) >= 0 ? '+' : ''}{formatCurrency(stats.manualIn - stats.manualOut)}
                                 </div>
                                 <p className="text-xs text-muted-foreground">
-                                    In: ${stats.manualIn} | Out: ${stats.manualOut}
+                                    In: {formatCurrency(stats.manualIn)} | Out: {formatCurrency(stats.manualOut)}
                                 </p>
                             </CardContent>
                         </Card>
@@ -333,7 +334,7 @@ export function CashDashboard() {
                                                 </TableCell>
                                                 <TableCell>{move.reason}</TableCell>
                                                 <TableCell className="text-right font-medium">
-                                                    ${move.amount.toFixed(2)}
+                                                    {formatCurrency(move.amount)}
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -356,13 +357,16 @@ export function CashDashboard() {
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="amount" className="text-right">Monto</Label>
-                            <Input
-                                id="amount"
-                                type="number"
-                                value={amount}
-                                onChange={(e) => setAmount(e.target.value)}
-                                className="col-span-3"
-                            />
+                            <div className="col-span-3 relative">
+                                <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    id="amount"
+                                    type="number"
+                                    value={amount}
+                                    onChange={(e) => setAmount(e.target.value)}
+                                    className="pl-8"
+                                />
+                            </div>
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="reason" className="text-right">Motivo</Label>

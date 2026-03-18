@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { DollarSign } from "lucide-react"
 import { toast } from "sonner"
 import { supabase } from "@/utils/supabase/client"
 
@@ -78,13 +79,17 @@ export function AddExpenseDialog({ open, onOpenChange, kioskId, onSuccess }: Add
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="amount">Monto</Label>
-                        <Input 
-                            id="amount" 
-                            type="number" 
-                            placeholder="0.00" 
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                        />
+                        <div className="relative">
+                            <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                                id="amount" 
+                                type="number" 
+                                placeholder="0.00" 
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                                className="pl-8"
+                            />
+                        </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
